@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "WQP2WFXPP8JG",
+    "name": "Testtrack",
+    "boat": "Mobula",
+    "skipper": "David",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-04-20T21:46:52.802919Z",
+    "stats": {
+      "distance_total_nm": 0.0,
+      "max_sog": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": [],
+        "sog": [],
+        "cog": []
+      }
+    }
+  ]
+}
