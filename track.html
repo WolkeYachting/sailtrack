@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SailTrack – Törn</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: system-ui, -apple-system, sans-serif; }
+  #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+  .panel {
+    position: absolute; top: 1rem; left: 1rem; z-index: 1000;
+    background: rgba(255,255,255,0.95); padding: 1rem 1.2rem;
+    border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    max-width: 300px;
+  }
+  .panel h2 { margin: 0 0 0.25rem 0; font-size: 1.2rem; }
+  .panel .meta { font-size: 0.85rem; color: #5a6876; margin-bottom: 0.75rem; }
+  .panel .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.9rem; }
+  .panel .stats .label { color: #5a6876; }
+  .panel .stats .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .panel .status {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px;
+    font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .panel .status.active { background: #dff5e0; color: #2a7c3f; }
+  .panel .status.finished { background: #e5ebf0; color: #5a6876; }
+  .back { position: absolute; top: 1rem; right: 1rem; z-index: 1000;
+          background: rgba(255,255,255,0.95); padding: 0.5rem 0.8rem;
+          border-radius: 8px; text-decoration: none; color: #1a2733;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.15); font-size: 0.9rem; }
+  .error { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+           background: white; padding: 2rem; border-radius: 10px;
+           box-shadow: 0 4px 16px rgba(0,0,0,0.15); text-align: center; z-index: 1000; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<a href="index.html" class="back">← zurück</a>
+<div class="panel" id="panel" style="display:none">
+  <div class="status" id="status"></div>
+  <h2 id="name"></h2>
+  <div class="meta" id="meta"></div>
+  <div class="stats">
+    <div class="label">Distanz</div><div class="value" id="distance">– nm</div>
+    <div class="label">Max Speed</div><div class="value" id="maxsog">– kn</div>
+    <div class="label">Punkte</div><div class="value" id="points">–</div>
+    <div class="label">Start</div><div class="value" id="start">–</div>
+  </div>
+</div>
+<div class="error" id="error" style="display:none"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+  // Pages-Repo, von dem die GeoJSON-Dateien geladen werden
+  const DATA_BASE = 'https://wolkeyachting.github.io/sailtrack';
+
+  const code = location.hash.slice(1).toUpperCase();
+  if (!/^[A-Z2-9]{12}$/.test(code)) {
+    showError('Ungültiger Code im Link.');
+  } else {
+    loadTrack(code);
+  }
+
+  // Karte immer initialisieren (auch bei Fehler sieht man was)
+  const map = L.map('map').setView([54, 10], 6);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap'
+  }).addTo(map);
+  L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+    maxZoom: 18, attribution: '© OpenSeaMap'
+  }).addTo(map);
+
+  async function sha256(str) {
+    const buf = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function loadTrack(code) {
+    try {
+      const hash = await sha256(code);
+      const res = await fetch(`${DATA_BASE}/tracks/${hash}.geojson`, { cache: 'no-cache' });
+      if (!res.ok) {
+        showError('Track nicht gefunden. Code korrekt?');
+        return;
+      }
+      const track = await res.json();
+      renderTrack(track);
+    } catch (e) {
+      showError('Fehler beim Laden: ' + e.message);
+    }
+  }
+
+  function renderTrack(track) {
+    const props = track.properties;
+    const coords = track.features[0].geometry.coordinates;
+
+    document.getElementById('panel').style.display = 'block';
+    document.getElementById('name').textContent = props.name || 'Unbenannter Törn';
+    const metaParts = [props.boat, props.skipper].filter(Boolean);
+    document.getElementById('meta').textContent = metaParts.join(' · ');
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = props.status === 'active' ? 'aktiv' : 'beendet';
+    statusEl.className = 'status ' + props.status;
+
+    const s = props.stats || {};
+    document.getElementById('distance').textContent = `${(s.distance_total_nm || 0).toFixed(1)} nm`;
+    document.getElementById('maxsog').textContent = `${(s.max_sog || 0).toFixed(1)} kn`;
+    document.getElementById('points').textContent = s.point_count ?? coords.length;
+    document.getElementById('start').textContent = props.trip_start || '–';
+
+    if (coords.length === 0) return;
+
+    // Leaflet will [lat, lon], GeoJSON liefert [lon, lat] → umdrehen
+    const latlngs = coords.map(([lon, lat]) => [lat, lon]);
+    const line = L.polyline(latlngs, { color: '#2a7cc7', weight: 3 }).addTo(map);
+
+    // Start/Ende-Marker
+    L.circleMarker(latlngs[0], { radius: 6, color: '#2a7c3f', fillColor: '#2a7c3f', fillOpacity: 1 })
+      .bindTooltip('Start').addTo(map);
+    if (latlngs.length > 1) {
+      L.circleMarker(latlngs[latlngs.length - 1],
+        { radius: 6, color: '#c72a2a', fillColor: '#c72a2a', fillOpacity: 1 })
+        .bindTooltip(props.status === 'active' ? 'Aktuelle Position' : 'Ende').addTo(map);
+    }
+
+    map.fitBounds(line.getBounds(), { padding: [60, 60] });
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SailTrack</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, sans-serif;
+    background: #eaf3fa; color: #1a2733;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: white; padding: 2.5rem 2rem; border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    max-width: 420px; width: 90%; text-align: center;
+  }
+  h1 { margin: 0 0 0.25rem 0; font-size: 2rem; }
+  p.tagline { color: #5a6876; margin: 0 0 2rem 0; }
+  input[type=text] {
+    width: 100%; padding: 0.8rem; font-size: 1.1rem; font-family: ui-monospace, monospace;
+    text-align: center; letter-spacing: 0.1em; text-transform: uppercase;
+    border: 2px solid #d0dce6; border-radius: 8px; outline: none;
+  }
+  input[type=text]:focus { border-color: #2a7cc7; }
+  button {
+    margin-top: 1rem; width: 100%; padding: 0.8rem; font-size: 1rem;
+    background: #2a7cc7; color: white; border: none; border-radius: 8px;
+    cursor: pointer; font-weight: 600;
+  }
+  button:hover { background: #1f6aad; }
+  .error { color: #c72a2a; margin-top: 0.5rem; min-height: 1.2em; font-size: 0.9rem; }
+  .hint { margin-top: 2rem; font-size: 0.85rem; color: #7a8896; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>⛵ SailTrack</h1>
+  <p class="tagline">Gib deinen Code ein, um einen Törn anzusehen</p>
+  <input type="text" id="code" placeholder="XXXXXXXXXXXX" maxlength="12" autocapitalize="characters" autocomplete="off">
+  <div class="error" id="error"></div>
+  <button id="go">Törn öffnen</button>
+  <div class="hint">Du hast keinen Code? Frag den Skipper.</div>
+</div>
+<script>
+  const input = document.getElementById('code');
+  const err = document.getElementById('error');
+  const btn = document.getElementById('go');
+
+  function open() {
+    const code = input.value.trim().toUpperCase();
+    if (!/^[A-Z2-9]{12}$/.test(code)) {
+      err.textContent = 'Bitte einen gültigen 12-stelligen Code eingeben.';
+      return;
+    }
+    err.textContent = '';
+    location.href = `track.html#${code}`;
+  }
+
+  btn.addEventListener('click', open);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
+  input.focus();
+</script>
+</body>
+</html>
