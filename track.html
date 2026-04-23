@@ -13,7 +13,7 @@
     position: absolute; top: 1rem; left: 1rem; z-index: 1000;
     background: rgba(255,255,255,0.95); padding: 1rem 1.2rem;
     border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    max-width: 300px;
+    max-width: 320px;
   }
   .panel h2 { margin: 0 0 0.25rem 0; font-size: 1.2rem; }
   .panel .meta { font-size: 0.85rem; color: #5a6876; margin-bottom: 0.75rem; }
@@ -46,6 +46,7 @@
   <div class="stats">
     <div class="label">Distanz</div><div class="value" id="distance">– nm</div>
     <div class="label">Max Speed</div><div class="value" id="maxsog">– kn</div>
+    <div class="label">Sessions</div><div class="value" id="sessions">–</div>
     <div class="label">Punkte</div><div class="value" id="points">–</div>
     <div class="label">Start</div><div class="value" id="start">–</div>
   </div>
@@ -54,7 +55,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
-  // Pages-Repo, von dem die GeoJSON-Dateien geladen werden
   const DATA_BASE = 'https://wolkeyachting.github.io/sailtrack';
 
   const code = location.hash.slice(1).toUpperCase();
@@ -64,7 +64,6 @@
     loadTrack(code);
   }
 
-  // Karte immer initialisieren (auch bei Fehler sieht man was)
   const map = L.map('map').setView([54, 10], 6);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19, attribution: '© OpenStreetMap'
@@ -94,9 +93,38 @@
     }
   }
 
+  /**
+   * Extrahiert Sessions aus Track (egal welches Format):
+   * - Phase 1 (LineString): Gibt [{ coords, ... }] mit 1 Element zurück
+   * - Phase 2a (MultiLineString): Gibt ein Element pro Session zurück
+   */
+  function extractSessions(track) {
+    const feat = track.features[0];
+    const geomType = feat.geometry.type;
+
+    if (geomType === 'LineString') {
+      // Phase 1 Fallback
+      return [{
+        coords: feat.geometry.coordinates,
+        meta: null,
+      }];
+    }
+
+    if (geomType === 'MultiLineString') {
+      // Phase 2a
+      const sessionsList = (feat.properties && feat.properties.sessions) || [];
+      return feat.geometry.coordinates.map((sessCoords, i) => ({
+        coords: sessCoords,
+        meta: sessionsList[i] || null,
+      }));
+    }
+
+    console.warn('Unknown geometry type:', geomType);
+    return [];
+  }
+
   function renderTrack(track) {
     const props = track.properties;
-    const coords = track.features[0].geometry.coordinates;
 
     document.getElementById('panel').style.display = 'block';
     document.getElementById('name').textContent = props.name || 'Unbenannter Törn';
@@ -106,28 +134,52 @@
     statusEl.textContent = props.status === 'active' ? 'aktiv' : 'beendet';
     statusEl.className = 'status ' + props.status;
 
+    const sessions = extractSessions(track);
     const s = props.stats || {};
+
     document.getElementById('distance').textContent = `${(s.distance_total_nm || 0).toFixed(1)} nm`;
     document.getElementById('maxsog').textContent = `${(s.max_sog || 0).toFixed(1)} kn`;
-    document.getElementById('points').textContent = s.point_count ?? coords.length;
+    document.getElementById('sessions').textContent = s.session_count ?? sessions.length;
+    document.getElementById('points').textContent =
+      s.point_count ?? sessions.reduce((sum, x) => sum + x.coords.length, 0);
     document.getElementById('start').textContent = props.trip_start || '–';
 
-    if (coords.length === 0) return;
+    // Gesamtbounds für fitBounds
+    const allBounds = [];
 
-    // Leaflet will [lat, lon], GeoJSON liefert [lon, lat] → umdrehen
-    const latlngs = coords.map(([lon, lat]) => [lat, lon]);
-    const line = L.polyline(latlngs, { color: '#2a7cc7', weight: 3 }).addTo(map);
+    sessions.forEach((sess, idx) => {
+      if (sess.coords.length === 0) return;
 
-    // Start/Ende-Marker
-    L.circleMarker(latlngs[0], { radius: 6, color: '#2a7c3f', fillColor: '#2a7c3f', fillOpacity: 1 })
-      .bindTooltip('Start').addTo(map);
-    if (latlngs.length > 1) {
-      L.circleMarker(latlngs[latlngs.length - 1],
-        { radius: 6, color: '#c72a2a', fillColor: '#c72a2a', fillOpacity: 1 })
-        .bindTooltip(props.status === 'active' ? 'Aktuelle Position' : 'Ende').addTo(map);
+      // Leaflet will [lat, lon], GeoJSON liefert [lon, lat]
+      const latlngs = sess.coords.map(([lon, lat]) => [lat, lon]);
+      L.polyline(latlngs, { color: '#2a7cc7', weight: 3 }).addTo(map);
+
+      allBounds.push(...latlngs);
+
+      // Start-Marker der allerersten Session
+      if (idx === 0) {
+        L.circleMarker(latlngs[0], {
+          radius: 6, color: '#2a7c3f', fillColor: '#2a7c3f', fillOpacity: 1
+        }).bindTooltip('Start').addTo(map);
+      }
+    });
+
+    // End-Marker am letzten Punkt der letzten Session mit Inhalt
+    for (let i = sessions.length - 1; i >= 0; i--) {
+      const s = sessions[i];
+      if (s.coords.length > 0) {
+        const [lon, lat] = s.coords[s.coords.length - 1];
+        const label = props.status === 'active' ? 'Aktuelle Position' : 'Ende';
+        L.circleMarker([lat, lon], {
+          radius: 6, color: '#c72a2a', fillColor: '#c72a2a', fillOpacity: 1
+        }).bindTooltip(label).addTo(map);
+        break;
+      }
     }
 
-    map.fitBounds(line.getBounds(), { padding: [60, 60] });
+    if (allBounds.length > 0) {
+      map.fitBounds(L.latLngBounds(allBounds), { padding: [60, 60] });
+    }
   }
 
   function showError(msg) {
