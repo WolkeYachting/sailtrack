@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "F3DFMM72PDU4",
+    "name": "abv",
+    "boat": "tit",
+    "skipper": "Skipper-KUpvR2",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-05-13T19:59:40.756834Z",
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0,
+      "session_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": []
+      },
+      "properties": {
+        "sessions": []
+      }
+    }
+  ]
+}
