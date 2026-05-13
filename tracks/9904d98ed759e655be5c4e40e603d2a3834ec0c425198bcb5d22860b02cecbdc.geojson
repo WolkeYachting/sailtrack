@@ -10,8 +10,8 @@
     "status": "active",
     "created_at": "2026-05-13T18:34:05.863316Z",
     "stats": {
-      "distance_total_nm": 0.0,
-      "point_count": 1,
+      "distance_total_nm": 0.004,
+      "point_count": 3,
       "session_count": 2
     }
   },
@@ -27,7 +27,16 @@
               51.7067405
             ]
           ],
-          []
+          [
+            [
+              8.7657698,
+              51.706737
+            ],
+            [
+              8.7657152,
+              51.7067887
+            ]
+          ]
         ]
       },
       "properties": {
@@ -42,7 +51,10 @@
           {
             "started_at": "2026-05-13T18:38:40Z",
             "ended_at": null,
-            "timestamps": []
+            "timestamps": [
+              1778697523,
+              1778697542
+            ]
           }
         ]
       }
