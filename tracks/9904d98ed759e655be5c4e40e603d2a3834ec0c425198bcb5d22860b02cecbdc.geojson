@@ -12,7 +12,7 @@
     "stats": {
       "distance_total_nm": 1.266,
       "point_count": 62,
-      "session_count": 4
+      "session_count": 5
     }
   },
   "features": [
@@ -274,6 +274,7 @@
             ]
           ],
           [],
+          [],
           []
         ]
       },
@@ -360,6 +361,11 @@
           },
           {
             "started_at": "2026-05-13T19:44:59Z",
+            "ended_at": null,
+            "timestamps": []
+          },
+          {
+            "started_at": "2026-05-13T19:46:47Z",
             "ended_at": null,
             "timestamps": []
           }
