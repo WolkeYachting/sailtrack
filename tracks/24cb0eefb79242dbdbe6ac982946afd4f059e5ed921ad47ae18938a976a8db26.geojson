@@ -12,7 +12,7 @@
     "stats": {
       "distance_total_nm": 0.0,
       "point_count": 0,
-      "session_count": 2
+      "session_count": 3
     }
   },
   "features": [
@@ -21,6 +21,7 @@
       "geometry": {
         "type": "MultiLineString",
         "coordinates": [
+          [],
           [],
           []
         ]
@@ -35,6 +36,11 @@
           {
             "started_at": "2026-05-13T20:13:52Z",
             "ended_at": "2026-05-13T20:26:32Z",
+            "timestamps": []
+          },
+          {
+            "started_at": "2026-05-14T08:12:17Z",
+            "ended_at": null,
             "timestamps": []
           }
         ]
