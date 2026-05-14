@@ -16,7 +16,20 @@
     max-width: 320px;
   }
   .panel h2 { margin: 0 0 0.25rem 0; font-size: 1.2rem; }
-  .panel .meta { font-size: 0.85rem; color: #5a6876; margin-bottom: 0.75rem; }
+  .panel .meta { font-size: 0.85rem; color: #5a6876; margin-bottom: 0.25rem; }
+  .panel .trip { font-size: 0.8rem; color: #5a6876; margin-bottom: 0.75rem; }
+  .panel .updated {
+    font-size: 0.75rem; color: #2a7c3f; margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.3rem;
+  }
+  .panel .updated .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #2a7c3f;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
   .panel .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.9rem; }
   .panel .stats .label { color: #5a6876; }
   .panel .stats .value { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -27,6 +40,16 @@
   }
   .panel .status.active { background: #dff5e0; color: #2a7c3f; }
   .panel .status.finished { background: #e5ebf0; color: #5a6876; }
+  .panel details {
+    margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e5ebf0;
+    font-size: 0.8rem;
+  }
+  .panel details summary {
+    cursor: pointer; color: #5a6876; user-select: none;
+  }
+  .panel details .stats {
+    grid-template-columns: 1fr 1fr; margin-top: 0.5rem; font-size: 0.85rem;
+  }
   .back { position: absolute; top: 1rem; right: 1rem; z-index: 1000;
           background: rgba(255,255,255,0.95); padding: 0.5rem 0.8rem;
           border-radius: 8px; text-decoration: none; color: #1a2733;
@@ -43,25 +66,33 @@
   <div class="status" id="status"></div>
   <h2 id="name"></h2>
   <div class="meta" id="meta"></div>
+  <div class="trip" id="trip"></div>
+  <div class="updated" id="updated" style="display:none">
+    <span class="dot"></span><span id="updated-text"></span>
+  </div>
   <div class="stats">
     <div class="label">Distanz</div><div class="value" id="distance">– nm</div>
-    <div class="label">Max Speed</div><div class="value" id="maxsog">– kn</div>
-    <div class="label">Sessions</div><div class="value" id="sessions">–</div>
-    <div class="label">Punkte</div><div class="value" id="points">–</div>
-    <div class="label">Start</div><div class="value" id="start">–</div>
+    <div class="label">Segmente</div><div class="value" id="segments">–</div>
   </div>
+  <details>
+    <summary>Sonstiges</summary>
+    <div class="stats">
+      <div class="label">Punkte</div><div class="value" id="points">–</div>
+      <div class="label">Angelegt</div><div class="value" id="created">–</div>
+    </div>
+  </details>
 </div>
 <div class="error" id="error" style="display:none"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
   const DATA_BASE = 'https://wolkeyachting.github.io/sailtrack';
+  const REFRESH_INTERVAL_MS = 30000;
+  const POLYLINE_COLOR = '#2a7cc7';
 
   const code = location.hash.slice(1).toUpperCase();
   if (!/^[A-Z2-9]{12}$/.test(code)) {
     showError('Ungültiger Code im Link.');
-  } else {
-    loadTrack(code);
   }
 
   const map = L.map('map').setView([54, 10], 6);
@@ -71,6 +102,13 @@
   L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
     maxZoom: 18, attribution: '© OpenSeaMap'
   }).addTo(map);
+
+  let layers = [];
+  let lastFitBoundsHash = null;
+
+  if (/^[A-Z2-9]{12}$/.test(code)) {
+    loadTrack(code);
+  }
 
   async function sha256(str) {
     const buf = new TextEncoder().encode(str);
@@ -88,98 +126,223 @@
       }
       const track = await res.json();
       renderTrack(track);
+
+      if (track.properties.status === 'active') {
+        setTimeout(() => loadTrack(code), REFRESH_INTERVAL_MS);
+      }
     } catch (e) {
       showError('Fehler beim Laden: ' + e.message);
     }
   }
 
   /**
-   * Extrahiert Sessions aus Track (egal welches Format):
-   * - Phase 1 (LineString): Gibt [{ coords, ... }] mit 1 Element zurück
-   * - Phase 2a (MultiLineString): Gibt ein Element pro Session zurück
+   * Teilt die flache LineString-Koordinatenliste in Segmente auf,
+   * die durch Pause-Timestamps getrennt sind.
+   * Returns array of { coords: [[lon,lat]...], timestamps: [...] }
    */
-  function extractSessions(track) {
-    const feat = track.features[0];
-    const geomType = feat.geometry.type;
-
-    if (geomType === 'LineString') {
-      // Phase 1 Fallback
-      return [{
-        coords: feat.geometry.coordinates,
-        meta: null,
-      }];
+  function splitIntoSegments(coords, timestamps, pauses) {
+    if (!pauses || pauses.length === 0) {
+      return [{ coords, timestamps }];
     }
+    const pausesSorted = [...pauses].sort((a, b) => a - b);
+    const segments = [];
+    let currentCoords = [];
+    let currentTs = [];
+    let pauseIdx = 0;
 
-    if (geomType === 'MultiLineString') {
-      // Phase 2a
-      const sessionsList = (feat.properties && feat.properties.sessions) || [];
-      return feat.geometry.coordinates.map((sessCoords, i) => ({
-        coords: sessCoords,
-        meta: sessionsList[i] || null,
-      }));
+    for (let i = 0; i < coords.length; i++) {
+      const t = timestamps[i];
+      // Sind wir über einer Pause hinweg?
+      while (pauseIdx < pausesSorted.length && pausesSorted[pauseIdx] < t) {
+        if (currentCoords.length > 0) {
+          segments.push({ coords: currentCoords, timestamps: currentTs });
+          currentCoords = [];
+          currentTs = [];
+        }
+        pauseIdx++;
+      }
+      currentCoords.push(coords[i]);
+      currentTs.push(t);
     }
+    if (currentCoords.length > 0) {
+      segments.push({ coords: currentCoords, timestamps: currentTs });
+    }
+    return segments;
+  }
 
-    console.warn('Unknown geometry type:', geomType);
-    return [];
+  function findLatestTimestamp(timestamps) {
+    if (!timestamps || timestamps.length === 0) return 0;
+    return timestamps[timestamps.length - 1];
+  }
+
+  function formatRelativeTime(unixSeconds) {
+    if (!unixSeconds) return null;
+    const diffSec = Math.floor(Date.now() / 1000) - unixSeconds;
+    if (diffSec < 30) return 'gerade eben';
+    if (diffSec < 60) return `vor ${diffSec} s`;
+    if (diffSec < 3600) return `vor ${Math.floor(diffSec / 60)} Min`;
+    if (diffSec < 86400) return `vor ${Math.floor(diffSec / 3600)} h`;
+    return `vor ${Math.floor(diffSec / 86400)} Tag(en)`;
+  }
+
+  function formatTripDates(props) {
+    const start = props.trip_start;
+    const end = props.trip_end;
+    if (!start && !end) return null;
+    const fmt = (s) => {
+      if (!s) return null;
+      const parts = s.split('-');
+      if (parts.length !== 3) return s;
+      const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+      const d = parseInt(parts[2], 10);
+      const m = months[parseInt(parts[1], 10) - 1] || parts[1];
+      const y = parts[0];
+      return `${d}. ${m} ${y}`;
+    };
+    if (start && end) {
+      if (start === end) return fmt(start);
+      return `${fmt(start)} – ${fmt(end)}`;
+    }
+    return fmt(start || end);
+  }
+
+  function formatCreatedAt(iso) {
+    if (!iso) return '–';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return iso;
+    }
   }
 
   function renderTrack(track) {
     const props = track.properties;
-
     document.getElementById('panel').style.display = 'block';
     document.getElementById('name').textContent = props.name || 'Unbenannter Törn';
+
     const metaParts = [props.boat, props.skipper].filter(Boolean);
     document.getElementById('meta').textContent = metaParts.join(' · ');
+
+    const trip = formatTripDates(props);
+    const tripEl = document.getElementById('trip');
+    if (trip) {
+      tripEl.textContent = trip;
+      tripEl.style.display = 'block';
+    } else {
+      tripEl.style.display = 'none';
+    }
+
     const statusEl = document.getElementById('status');
     statusEl.textContent = props.status === 'active' ? 'aktiv' : 'beendet';
     statusEl.className = 'status ' + props.status;
 
-    const sessions = extractSessions(track);
+    const feat = track.features[0];
+    const coords = feat.geometry.coordinates || [];
+    const timestamps = (feat.properties && feat.properties.timestamps) || [];
+    const pauses = props.pauses || [];
+    const segments = splitIntoSegments(coords, timestamps, pauses);
     const s = props.stats || {};
 
     document.getElementById('distance').textContent = `${(s.distance_total_nm || 0).toFixed(1)} nm`;
-    document.getElementById('maxsog').textContent = `${(s.max_sog || 0).toFixed(1)} kn`;
-    document.getElementById('sessions').textContent = s.session_count ?? sessions.length;
-    document.getElementById('points').textContent =
-      s.point_count ?? sessions.reduce((sum, x) => sum + x.coords.length, 0);
-    document.getElementById('start').textContent = props.trip_start || '–';
+    document.getElementById('segments').textContent = segments.length;
+    document.getElementById('points').textContent = s.point_count ?? coords.length;
+    document.getElementById('created').textContent = formatCreatedAt(props.created_at);
 
-    // Gesamtbounds für fitBounds
+    const updatedEl = document.getElementById('updated');
+    if (props.status === 'active') {
+      const latest = findLatestTimestamp(timestamps);
+      const rel = formatRelativeTime(latest);
+      if (rel) {
+        document.getElementById('updated-text').textContent = `aktualisiert ${rel}`;
+        updatedEl.style.display = 'flex';
+      } else {
+        updatedEl.style.display = 'none';
+      }
+    } else {
+      updatedEl.style.display = 'none';
+    }
+
+    redrawMap(segments, props.status);
+  }
+
+  function redrawMap(segments, status) {
+    for (const l of layers) map.removeLayer(l);
+    layers = [];
+
     const allBounds = [];
+    let firstPoint = null;
+    let lastPoint = null;
 
-    sessions.forEach((sess, idx) => {
-      if (sess.coords.length === 0) return;
-
-      // Leaflet will [lat, lon], GeoJSON liefert [lon, lat]
-      const latlngs = sess.coords.map(([lon, lat]) => [lat, lon]);
-      L.polyline(latlngs, { color: '#2a7cc7', weight: 3 }).addTo(map);
-
+    segments.forEach((seg) => {
+      if (seg.coords.length === 0) return;
+      const latlngs = seg.coords.map(([lon, lat]) => [lat, lon]);
+      const line = L.polyline(latlngs, { color: POLYLINE_COLOR, weight: 3 }).addTo(map);
+      layers.push(line);
       allBounds.push(...latlngs);
 
-      // Start-Marker der allerersten Session
-      if (idx === 0) {
-        L.circleMarker(latlngs[0], {
-          radius: 6, color: '#2a7c3f', fillColor: '#2a7c3f', fillOpacity: 1
-        }).bindTooltip('Start').addTo(map);
+      if (seg.timestamps.length === latlngs.length && seg.timestamps.length > 1) {
+        attachPointPopups(latlngs, seg.timestamps);
       }
+
+      if (!firstPoint) firstPoint = latlngs[0];
+      lastPoint = latlngs[latlngs.length - 1];
     });
 
-    // End-Marker am letzten Punkt der letzten Session mit Inhalt
-    for (let i = sessions.length - 1; i >= 0; i--) {
-      const s = sessions[i];
-      if (s.coords.length > 0) {
-        const [lon, lat] = s.coords[s.coords.length - 1];
-        const label = props.status === 'active' ? 'Aktuelle Position' : 'Ende';
-        L.circleMarker([lat, lon], {
-          radius: 6, color: '#c72a2a', fillColor: '#c72a2a', fillOpacity: 1
-        }).bindTooltip(label).addTo(map);
-        break;
-      }
+    if (firstPoint) {
+      const m = L.circleMarker(firstPoint, {
+        radius: 6, color: '#2a7c3f', fillColor: '#2a7c3f', fillOpacity: 1
+      }).bindTooltip('Start').addTo(map);
+      layers.push(m);
+    }
+    if (lastPoint) {
+      const label = status === 'active' ? 'Aktuelle Position' : 'Ende';
+      const color = status === 'active' ? '#c72a2a' : '#5a6876';
+      const m = L.circleMarker(lastPoint, {
+        radius: 7, color: color, fillColor: color, fillOpacity: 1
+      }).bindTooltip(label).addTo(map);
+      layers.push(m);
     }
 
     if (allBounds.length > 0) {
-      map.fitBounds(L.latLngBounds(allBounds), { padding: [60, 60] });
+      const bounds = L.latLngBounds(allBounds);
+      const boundsHash = bounds.toBBoxString();
+      if (boundsHash !== lastFitBoundsHash) {
+        map.fitBounds(bounds, { padding: [60, 60] });
+        lastFitBoundsHash = boundsHash;
+      }
     }
+  }
+
+  function attachPointPopups(latlngs, timestamps) {
+    const step = Math.max(1, Math.floor(latlngs.length / 100));
+    for (let i = 1; i < latlngs.length; i += step) {
+      const prev = latlngs[i - 1];
+      const cur = latlngs[i];
+      const dt = timestamps[i] - timestamps[i - 1];
+      if (dt <= 0) continue;
+      const distNm = haversineNm(prev[0], prev[1], cur[0], cur[1]);
+      const sog = (distNm * 3600) / dt;
+      const timeStr = new Date(timestamps[i] * 1000).toLocaleString('de-DE', {
+        hour: '2-digit', minute: '2-digit',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      });
+      const popup = `<b>${timeStr}</b><br>SOG: ${sog.toFixed(1)} kn`;
+      const m = L.circleMarker(cur, {
+        radius: 4, color: POLYLINE_COLOR, fillOpacity: 0, weight: 0,
+      }).bindPopup(popup).addTo(map);
+      layers.push(m);
+    }
+  }
+
+  function haversineNm(lat1, lon1, lat2, lon2) {
+    const Rnm = 3440.065;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * Rnm * Math.asin(Math.sqrt(a));
   }
 
   function showError(msg) {
