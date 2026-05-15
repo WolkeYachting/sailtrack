@@ -7,7 +7,7 @@
     "skipper": "Skipper-OT9Px3",
     "trip_start": "2026-05-14",
     "trip_end": "2026-05-15",
-    "status": "active",
+    "status": "finished",
     "created_at": "2026-05-14T14:52:51.142412Z",
     "pauses": [
       1778771468,
@@ -17,7 +17,8 @@
     "stats": {
       "distance_total_nm": 7.216,
       "point_count": 245
-    }
+    },
+    "finished_at": "2026-05-15T12:52:16.133804Z"
   },
   "features": [
     {
