@@ -14,7 +14,7 @@
     ],
     "stats": {
       "distance_total_nm": 0.0,
-      "point_count": 0
+      "point_count": 1
     }
   },
   "features": [
@@ -22,10 +22,17 @@
       "type": "Feature",
       "geometry": {
         "type": "LineString",
-        "coordinates": []
+        "coordinates": [
+          [
+            -9.1388265,
+            38.7674177
+          ]
+        ]
       },
       "properties": {
-        "timestamps": []
+        "timestamps": [
+          1778853027
+        ]
       }
     }
   ]
