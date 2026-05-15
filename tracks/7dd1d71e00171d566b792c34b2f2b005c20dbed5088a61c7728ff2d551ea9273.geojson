@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "TGX8ABGRMYME",
+    "name": "LIS HOR",
+    "boat": "Airbus XYZ",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": "2026-05-15",
+    "trip_end": "2026-05-15",
+    "status": "active",
+    "created_at": "2026-05-15T12:52:12.387224Z",
+    "pauses": [],
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
