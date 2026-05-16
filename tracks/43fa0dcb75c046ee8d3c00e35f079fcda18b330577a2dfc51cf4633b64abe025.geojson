@@ -13,8 +13,8 @@
       1778974582
     ],
     "stats": {
-      "distance_total_nm": 0.003,
-      "point_count": 3
+      "distance_total_nm": 0.005,
+      "point_count": 4
     }
   },
   "features": [
@@ -23,6 +23,10 @@
       "geometry": {
         "type": "LineString",
         "coordinates": [
+          [
+            -28.6249037,
+            38.532721699999996
+          ],
           [
             -28.6248999,
             38.5327617
@@ -39,6 +43,7 @@
       },
       "properties": {
         "timestamps": [
+          1778974562,
           1778974562,
           1778974565,
           1778974567
