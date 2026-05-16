@@ -88,6 +88,12 @@
   const DATA_BASE = 'https://wolkeyachting.github.io/sailtrack';
   const REFRESH_INTERVAL_MS = 30000;
   const POLYLINE_COLOR = '#2a7cc7';
+  // Display-Glättung: EMA dämpft das Rauschen, Chaikin rundet die Ecken.
+  // Beide arbeiten nur auf der Anzeige – die Rohpunkte bleiben unverändert.
+  // EMA_ALPHA niedriger = glatter aber träger; CHAIKIN_ITERATIONS 1 = weniger
+  // Rundung (z.B. wenn Wenden zu stark abgerundet wirken).
+  const EMA_ALPHA = 0.35;
+  const CHAIKIN_ITERATIONS = 2;
 
   const code = location.hash.slice(1).toUpperCase();
   if (!/^[A-Z2-9]{12}$/.test(code)) {
@@ -276,7 +282,10 @@
     segments.forEach((seg) => {
       if (seg.coords.length === 0) return;
       const latlngs = seg.coords.map(([lon, lat]) => [lat, lon]);
-      const line = L.polyline(latlngs, { color: POLYLINE_COLOR, weight: 3 }).addTo(map);
+      // Glättung nur fürs Rendern – die Rohpunkte (latlngs) bleiben für
+      // Marker, Popups und Bounds erhalten.
+      const smoothed = chaikin(emaSmooth(latlngs, EMA_ALPHA), CHAIKIN_ITERATIONS);
+      const line = L.polyline(smoothed, { color: POLYLINE_COLOR, weight: 3 }).addTo(map);
       layers.push(line);
       allBounds.push(...latlngs);
 
@@ -332,6 +341,46 @@
       }).bindPopup(popup).addTo(map);
       layers.push(m);
     }
+  }
+
+  // --- Display-Glättung -----------------------------------------------------
+
+  /**
+   * Exponentielle Glättung pro Koordinate. Dämpft das GPS-Rauschen,
+   * hinkt echter Bewegung minimal hinterher. Start- und Endpunkt bleiben
+   * exakt erhalten. Erwartet/liefert [lat, lon]-Paare.
+   */
+  function emaSmooth(pts, alpha) {
+    if (pts.length < 2) return pts;
+    const out = [pts[0]];
+    let lat = pts[0][0], lon = pts[0][1];
+    for (let i = 1; i < pts.length; i++) {
+      lat = alpha * pts[i][0] + (1 - alpha) * lat;
+      lon = alpha * pts[i][1] + (1 - alpha) * lon;
+      out.push([lat, lon]);
+    }
+    return out;
+  }
+
+  /**
+   * Chaikin-Glättung: schneidet bei jeder Iteration die Ecken ab und macht
+   * aus dem eckigen Polygonzug eine weiche Kurve. Start- und Endpunkt
+   * bleiben erhalten.
+   */
+  function chaikin(pts, iterations) {
+    let r = pts;
+    for (let k = 0; k < iterations; k++) {
+      if (r.length < 3) break;
+      const next = [r[0]];
+      for (let i = 0; i < r.length - 1; i++) {
+        const p = r[i], q = r[i + 1];
+        next.push([0.75 * p[0] + 0.25 * q[0], 0.75 * p[1] + 0.25 * q[1]]);
+        next.push([0.25 * p[0] + 0.75 * q[0], 0.25 * p[1] + 0.75 * q[1]]);
+      }
+      next.push(r[r.length - 1]);
+      r = next;
+    }
+    return r;
   }
 
   function haversineNm(lat1, lon1, lat2, lon2) {
