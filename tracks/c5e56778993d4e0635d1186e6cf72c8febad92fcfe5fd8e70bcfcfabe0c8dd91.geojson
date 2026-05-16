@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "QKBU6KHH6UQB",
+    "name": "Horta",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-05-16T10:40:26.303022Z",
+    "pauses": [],
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
