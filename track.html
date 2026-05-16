@@ -72,7 +72,6 @@
   </div>
   <div class="stats">
     <div class="label">Distanz</div><div class="value" id="distance">– nm</div>
-    <div class="label">Segmente</div><div class="value" id="segments">–</div>
   </div>
   <details>
     <summary>Sonstiges</summary>
@@ -240,12 +239,12 @@
     const feat = track.features[0];
     const coords = feat.geometry.coordinates || [];
     const timestamps = (feat.properties && feat.properties.timestamps) || [];
-    const pauses = props.pauses || [];
-    const segments = splitIntoSegments(coords, timestamps, pauses);
+    // Pausen werden im Datenmodell behalten (für spätere Features),
+    // aber bei der Karten-Darstellung absichtlich ignoriert.
+    const segments = [{ coords, timestamps }];
     const s = props.stats || {};
 
     document.getElementById('distance').textContent = `${(s.distance_total_nm || 0).toFixed(1)} nm`;
-    document.getElementById('segments').textContent = segments.length;
     document.getElementById('points').textContent = s.point_count ?? coords.length;
     document.getElementById('created').textContent = formatCreatedAt(props.created_at);
 
