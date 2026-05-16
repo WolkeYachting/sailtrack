@@ -9,7 +9,9 @@
     "trip_end": null,
     "status": "active",
     "created_at": "2026-05-16T10:40:26.303022Z",
-    "pauses": [],
+    "pauses": [
+      1778932316
+    ],
     "stats": {
       "distance_total_nm": 0.164,
       "point_count": 45
