@@ -11,8 +11,8 @@
     "created_at": "2026-05-17T08:00:31.604990Z",
     "pauses": [],
     "stats": {
-      "distance_total_nm": 0.0,
-      "point_count": 0
+      "distance_total_nm": 0.004,
+      "point_count": 2
     }
   },
   "features": [
@@ -20,10 +20,22 @@
       "type": "Feature",
       "geometry": {
         "type": "LineString",
-        "coordinates": []
+        "coordinates": [
+          [
+            -28.6249984,
+            38.5328019
+          ],
+          [
+            -28.6249199,
+            38.5327914
+          ]
+        ]
       },
       "properties": {
-        "timestamps": []
+        "timestamps": [
+          1779005062,
+          1779005065
+        ]
       }
     }
   ]
