@@ -10,7 +10,8 @@
     "status": "active",
     "created_at": "2026-06-04T17:50:42.745003Z",
     "pauses": [
-      1780595467
+      1780595467,
+      1780606917
     ],
     "stats": {
       "distance_total_nm": 0.0,
