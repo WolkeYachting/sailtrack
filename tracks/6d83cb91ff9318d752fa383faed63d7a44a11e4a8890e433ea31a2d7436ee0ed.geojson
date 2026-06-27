@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "HNKQKJX7SKFY",
+    "name": "JTC Ibiza & Formentera — 27.07.26",
+    "boat": "Alboran Lambrusco",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": "2026-06-27",
+    "trip_end": "2026-07-04",
+    "status": "active",
+    "created_at": "2026-06-27T16:22:21.584750Z",
+    "pauses": [],
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
