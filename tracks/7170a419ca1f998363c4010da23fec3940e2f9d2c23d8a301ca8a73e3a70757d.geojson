@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "24RNH9EB4R5M",
+    "name": "TimeTest",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-07-12T19:31:03.735265Z",
+    "pauses": [],
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
