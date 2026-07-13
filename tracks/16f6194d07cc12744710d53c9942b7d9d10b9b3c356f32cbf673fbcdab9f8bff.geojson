@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "2KGJS5A5EU4B",
+    "name": "jajsixusg",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-07-13T19:39:18.048502Z",
+    "pauses": [],
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
