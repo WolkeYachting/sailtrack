@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "id": "URHDN8CQNBV6",
+    "name": "ggfkhvx",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-07-13T18:49:31.122685Z",
+    "pauses": [],
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
