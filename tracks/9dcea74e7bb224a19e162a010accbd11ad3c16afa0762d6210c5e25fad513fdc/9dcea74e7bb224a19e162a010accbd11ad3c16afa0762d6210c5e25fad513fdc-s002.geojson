@@ -10,10 +10,10 @@
       "boot_id": "8"
     },
     "stats": {
-      "distance_nm": 0.0,
-      "point_count": 0,
-      "t_start": null,
-      "t_stop": null
+      "distance_nm": 0.705,
+      "point_count": 2,
+      "t_start": 1783000002,
+      "t_stop": 1783000004
     }
   },
   "features": [
@@ -21,10 +21,22 @@
       "type": "Feature",
       "geometry": {
         "type": "LineString",
-        "coordinates": []
+        "coordinates": [
+          [
+            9.0,
+            52.0
+          ],
+          [
+            9.01,
+            52.01
+          ]
+        ]
       },
       "properties": {
-        "timestamps": []
+        "timestamps": [
+          1783000002,
+          1783000004
+        ]
       }
     }
   ]

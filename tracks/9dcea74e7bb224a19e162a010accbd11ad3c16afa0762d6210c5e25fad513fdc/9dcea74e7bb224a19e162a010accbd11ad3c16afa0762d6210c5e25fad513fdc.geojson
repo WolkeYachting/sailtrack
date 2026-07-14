@@ -11,8 +11,8 @@
     "status": "active",
     "created_at": "2026-07-14T09:55:43.035232Z",
     "stats": {
-      "distance_total_nm": 0.141,
-      "point_count": 3,
+      "distance_total_nm": 0.846,
+      "point_count": 5,
       "segment_count": 2
     }
   },
@@ -32,23 +32,23 @@
       "opened_at": "2026-07-14T10:02:45.750501Z",
       "closed_at": null,
       "closed": false,
-      "conflict": false
+      "conflict": true
     },
     {
       "id": "s002",
       "file": "9dcea74e7bb224a19e162a010accbd11ad3c16afa0762d6210c5e25fad513fdc-s002.geojson",
-      "t_start": null,
-      "t_stop": null,
-      "point_count": 0,
-      "distance_nm": 0.0,
-      "ts_hash": "cbf29ce484222325",
+      "t_start": 1783000002,
+      "t_stop": 1783000004,
+      "point_count": 2,
+      "distance_nm": 0.705,
+      "ts_hash": "5ccda4bf48287c3f",
       "anchor": {
         "boot_id": "8"
       },
       "opened_at": "2026-07-14T10:02:58.392624Z",
       "closed_at": null,
       "closed": false,
-      "conflict": false
+      "conflict": true
     }
   ]
 }
