@@ -1,0 +1,176 @@
+{
+  "version": 3,
+  "type": "TrackManifest",
+  "properties": {
+    "id": "HNKQKJX7SKFY",
+    "name": "JTC Ibiza & Formentera — 27.06.26",
+    "boat": "Alboran Lambrusco",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": "2026-06-27",
+    "trip_end": "2026-07-04",
+    "status": "finished",
+    "created_at": "2026-06-27T16:22:21.584750Z",
+    "stats": {
+      "distance_total_nm": 225.733,
+      "point_count": 72207,
+      "segment_count": 9
+    },
+    "finished_at": "2026-07-03T18:07:01.363329Z",
+    "migrated_from": "v2"
+  },
+  "segments": [
+    {
+      "id": "s001",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s001.geojson",
+      "t_start": 1782577890,
+      "t_stop": 1782587600,
+      "point_count": 4734,
+      "distance_nm": 16.487,
+      "ts_hash": "769d1bac73539394",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:33.318192Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s002",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s002.geojson",
+      "t_start": 1782619482,
+      "t_stop": 1782663988,
+      "point_count": 22011,
+      "distance_nm": 70.649,
+      "ts_hash": "f301db1d7d6517eb",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:33.419275Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s003",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s003.geojson",
+      "t_start": 1782716624,
+      "t_stop": 1782719448,
+      "point_count": 1051,
+      "distance_nm": 2.844,
+      "ts_hash": "ac84701ec73f0196",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:33.820442Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s004",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s004.geojson",
+      "t_start": 1782754556,
+      "t_stop": 1782758011,
+      "point_count": 1653,
+      "distance_nm": 4.602,
+      "ts_hash": "ab01bdf9eee91ee6",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:33.823425Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s005",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s005.geojson",
+      "t_start": 1782810150,
+      "t_stop": 1782829831,
+      "point_count": 9428,
+      "distance_nm": 24.538,
+      "ts_hash": "6e99556c52923ca5",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:33.827025Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s006",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s006.geojson",
+      "t_start": 1782898047,
+      "t_stop": 1782904530,
+      "point_count": 2318,
+      "distance_nm": 4.914,
+      "ts_hash": "c22122f380230dad",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:34.018138Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s007",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s007.geojson",
+      "t_start": 1782981432,
+      "t_stop": 1783010110,
+      "point_count": 12965,
+      "distance_nm": 39.762,
+      "ts_hash": "e30de81d87837ab1",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:34.025135Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s008",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s008.geojson",
+      "t_start": 1783051451,
+      "t_stop": 1783081103,
+      "point_count": 14723,
+      "distance_nm": 52.095,
+      "ts_hash": "7b859e44e417dd8e",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:34.228824Z",
+      "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s009",
+      "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s009.geojson",
+      "t_start": 1783086126,
+      "t_stop": 1783095693,
+      "point_count": 3324,
+      "distance_nm": 9.842,
+      "ts_hash": "860493e6b6cd6aac",
+      "anchor": {
+        "known": false,
+        "migrated": true
+      },
+      "opened_at": null,
+      "closed_at": "2026-07-14T10:05:34.521696Z",
+      "closed": true,
+      "conflict": false
+    }
+  ]
+}
