@@ -11,10 +11,10 @@
       "wall_anchor_ms": 1783000000000
     },
     "stats": {
-      "distance_nm": 0.0,
-      "point_count": 0,
-      "t_start": null,
-      "t_stop": null
+      "distance_nm": 0.141,
+      "point_count": 3,
+      "t_start": 1783000000,
+      "t_stop": 1783000004
     }
   },
   "features": [
@@ -22,10 +22,27 @@
       "type": "Feature",
       "geometry": {
         "type": "LineString",
-        "coordinates": []
+        "coordinates": [
+          [
+            8.39,
+            51.57
+          ],
+          [
+            8.391,
+            51.571
+          ],
+          [
+            8.392,
+            51.572
+          ]
+        ]
       },
       "properties": {
-        "timestamps": []
+        "timestamps": [
+          1783000000,
+          1783000002,
+          1783000004
+        ]
       }
     }
   ]
