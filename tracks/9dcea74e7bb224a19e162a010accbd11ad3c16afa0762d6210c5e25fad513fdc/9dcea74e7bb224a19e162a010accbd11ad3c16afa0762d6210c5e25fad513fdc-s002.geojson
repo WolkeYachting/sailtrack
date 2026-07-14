@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "version": 3,
+    "track_id": "AFHFDA8FJPKF",
+    "segment": "s002",
+    "opened_at": "2026-07-14T10:02:58.392624Z",
+    "closed_at": null,
+    "anchor": {
+      "boot_id": "8"
+    },
+    "stats": {
+      "distance_nm": 0.0,
+      "point_count": 0,
+      "t_start": null,
+      "t_stop": null
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
