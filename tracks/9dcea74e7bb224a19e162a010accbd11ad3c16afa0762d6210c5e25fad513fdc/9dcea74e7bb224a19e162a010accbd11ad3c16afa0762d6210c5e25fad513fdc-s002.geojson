@@ -7,13 +7,19 @@
     "opened_at": "2026-07-14T10:02:58.392624Z",
     "closed_at": null,
     "anchor": {
-      "boot_id": "8"
+      "boot_id": "8",
+      "shifts": [
+        {
+          "delta": -3600,
+          "at": "2026-07-14T10:03:39.430925Z"
+        }
+      ]
     },
     "stats": {
       "distance_nm": 0.705,
       "point_count": 2,
-      "t_start": 1783000002,
-      "t_stop": 1783000004
+      "t_start": 1782996402,
+      "t_stop": 1782996404
     }
   },
   "features": [
@@ -34,8 +40,8 @@
       },
       "properties": {
         "timestamps": [
-          1783000002,
-          1783000004
+          1782996402,
+          1782996404
         ]
       }
     }

@@ -32,23 +32,29 @@
       "opened_at": "2026-07-14T10:02:45.750501Z",
       "closed_at": null,
       "closed": false,
-      "conflict": true
+      "conflict": false
     },
     {
       "id": "s002",
       "file": "9dcea74e7bb224a19e162a010accbd11ad3c16afa0762d6210c5e25fad513fdc-s002.geojson",
-      "t_start": 1783000002,
-      "t_stop": 1783000004,
+      "t_start": 1782996402,
+      "t_stop": 1782996404,
       "point_count": 2,
       "distance_nm": 0.705,
-      "ts_hash": "5ccda4bf48287c3f",
+      "ts_hash": "11abd3be6528719d",
       "anchor": {
-        "boot_id": "8"
+        "boot_id": "8",
+        "shifts": [
+          {
+            "delta": -3600,
+            "at": "2026-07-14T10:03:39.430925Z"
+          }
+        ]
       },
       "opened_at": "2026-07-14T10:02:58.392624Z",
       "closed_at": null,
       "closed": false,
-      "conflict": true
+      "conflict": false
     }
   ]
 }
