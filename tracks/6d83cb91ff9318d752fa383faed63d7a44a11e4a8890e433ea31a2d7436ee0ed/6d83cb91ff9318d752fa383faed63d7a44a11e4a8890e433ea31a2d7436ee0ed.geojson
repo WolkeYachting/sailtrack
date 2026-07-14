@@ -11,8 +11,8 @@
     "status": "finished",
     "created_at": "2026-06-27T16:22:21.584750Z",
     "stats": {
-      "distance_total_nm": 225.742,
-      "point_count": 72208,
+      "distance_total_nm": 225.808,
+      "point_count": 72211,
       "segment_count": 9
     },
     "finished_at": "2026-07-03T18:07:01.363329Z",
@@ -160,9 +160,9 @@
       "file": "6d83cb91ff9318d752fa383faed63d7a44a11e4a8890e433ea31a2d7436ee0ed-s009.geojson",
       "t_start": 1783086126,
       "t_stop": 1783095693,
-      "point_count": 3324,
-      "distance_nm": 9.842,
-      "ts_hash": "860493e6b6cd6aac",
+      "point_count": 3327,
+      "distance_nm": 9.908,
+      "ts_hash": "9086120bcb08e210",
       "anchor": {
         "known": false,
         "migrated": true
