@@ -40,15 +40,23 @@
   }
   .panel .status.active { background: #dff5e0; color: #2a7c3f; }
   .panel .status.finished { background: #e5ebf0; color: #5a6876; }
+  .panel .warn {
+    margin-top: 0.6rem; padding: 0.5rem 0.6rem; border-radius: 6px;
+    background: #fdf3e0; color: #8a5a10; font-size: 0.75rem; line-height: 1.35;
+  }
   .panel details {
     margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e5ebf0;
     font-size: 0.8rem;
   }
-  .panel details summary {
-    cursor: pointer; color: #5a6876; user-select: none;
-  }
+  .panel details summary { cursor: pointer; color: #5a6876; user-select: none; }
   .panel details .stats {
     grid-template-columns: 1fr 1fr; margin-top: 0.5rem; font-size: 0.85rem;
+  }
+  .loading {
+    position: absolute; top: 1rem; left: 50%; transform: translateX(-50%);
+    z-index: 1000; background: rgba(255,255,255,0.95); padding: 0.4rem 0.9rem;
+    border-radius: 999px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    font-size: 0.8rem; color: #5a6876;
   }
   .back { position: absolute; top: 1rem; right: 1rem; z-index: 1000;
           background: rgba(255,255,255,0.95); padding: 0.5rem 0.8rem;
@@ -62,6 +70,7 @@
 <body>
 <div id="map"></div>
 <a href="index.html" class="back">← zurück</a>
+<div class="loading" id="loading" style="display:none">lädt …</div>
 <div class="panel" id="panel" style="display:none">
   <div class="status" id="status"></div>
   <h2 id="name"></h2>
@@ -73,10 +82,12 @@
   <div class="stats">
     <div class="label">Distanz</div><div class="value" id="distance">– nm</div>
   </div>
+  <div class="warn" id="conflict-warn" style="display:none"></div>
   <details>
     <summary>Sonstiges</summary>
     <div class="stats">
       <div class="label">Punkte</div><div class="value" id="points">–</div>
+      <div class="label">Abschnitte</div><div class="value" id="segcount">–</div>
       <div class="label">Angelegt</div><div class="value" id="created">–</div>
     </div>
   </details>
@@ -85,13 +96,32 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
+  // ==========================================================================
+  // SailTrack Frontend – v3 (Segment-Split)
+  //
+  // Ein Törn liegt nicht mehr in EINER Datei, sondern als Manifest plus N
+  // Segmentdateien:
+  //
+  //   tracks/<hash>/<hash>.geojson        Manifest: Meta + Segment-Index
+  //   tracks/<hash>/<hash>-s001.geojson   Segment: LineString + timestamps
+  //
+  // Die Reihenfolge der Darstellung ergibt sich aus der SEGMENTNUMMER, nicht
+  // aus den Zeitstempeln. Das ist der Kern des Umbaus: Wenn die Systemuhr des
+  // Aufzeichnungsgeräts beim Verankern eines Segments falsch stand, können sich
+  // die t-Bereiche zweier Segmente überlappen. Solange nie über Segmentgrenzen
+  // hinweg sortiert wird, ist das folgenlos — nur ein Hinweis (`conflict`),
+  // dass ein Anker daneben lag.
+  //
+  // Das alte splitIntoSegments() ist deshalb ersatzlos weg: Die Aufteilung
+  // liefert jetzt der Server, und `pauses` gibt es nicht mehr — die Lücke
+  // zwischen zwei Segmentdateien IST die Pause.
+  // ==========================================================================
+
   const DATA_BASE = 'https://wolkeyachting.github.io/sailtrack';
   const REFRESH_INTERVAL_MS = 30000;
   const POLYLINE_COLOR = '#2a7cc7';
   // Display-Glättung: EMA dämpft das Rauschen, Chaikin rundet die Ecken.
   // Beide arbeiten nur auf der Anzeige – die Rohpunkte bleiben unverändert.
-  // EMA_ALPHA niedriger = glatter aber träger; CHAIKIN_ITERATIONS 1 = weniger
-  // Rundung (z.B. wenn Wenden zu stark abgerundet wirken).
   const EMA_ALPHA = 0.35;
   const CHAIKIN_ITERATIONS = 2;
 
@@ -111,6 +141,16 @@
   let layers = [];
   let lastFitBoundsHash = null;
 
+  // Cache: ts_hash -> {coords, timestamps}
+  //
+  // Bei einem laufenden Törn wird alle 30 s neu geladen. Ohne Cache wären das
+  // jedes Mal ALLE Segmentdateien — bei einem Wochentörn zweistellige MB. Der
+  // ts_hash aus dem Manifest ändert sich nur, wenn Punkte dazugekommen sind;
+  // in der Praxis betrifft das genau EIN Segment (das offene). Alle anderen
+  // kommen aus dem Cache.
+  const segCache = new Map();
+  let refreshTimer = null;
+
   if (/^[A-Z2-9]{12}$/.test(code)) {
     loadTrack(code);
   }
@@ -121,63 +161,54 @@
     return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
+  function setLoading(on) {
+    document.getElementById('loading').style.display = on ? 'block' : 'none';
+  }
+
   async function loadTrack(code) {
     try {
       const hash = await sha256(code);
-      const res = await fetch(`${DATA_BASE}/tracks/${hash}.geojson`, { cache: 'no-cache' });
+      setLoading(segCache.size === 0);
+
+      const res = await fetch(`${DATA_BASE}/tracks/${hash}/${hash}.geojson`,
+                              { cache: 'no-cache' });
       if (!res.ok) {
-        showError('Track nicht gefunden. Code korrekt?');
+        setLoading(false);
+        showError('Törn nicht gefunden. Code korrekt?');
         return;
       }
-      const track = await res.json();
-      renderTrack(track);
+      const manifest = await res.json();
+      const entries = manifest.segments || [];
 
-      if (track.properties.status === 'active') {
-        setTimeout(() => loadTrack(code), REFRESH_INTERVAL_MS);
+      // Segmente parallel holen — aber nur die, deren ts_hash sich geändert hat.
+      const segments = await Promise.all(entries.map(async (e) => {
+        const cached = segCache.get(e.ts_hash);
+        if (cached) return { ...cached, entry: e };
+
+        const r = await fetch(`${DATA_BASE}/tracks/${hash}/${e.file}`,
+                              { cache: 'no-cache' });
+        if (!r.ok) return { coords: [], timestamps: [], entry: e };
+        const doc = await r.json();
+        const feat = doc.features[0];
+        const seg = {
+          coords: feat.geometry.coordinates || [],
+          timestamps: (feat.properties && feat.properties.timestamps) || [],
+        };
+        segCache.set(e.ts_hash, seg);
+        return { ...seg, entry: e };
+      }));
+
+      setLoading(false);
+      renderTrack(manifest, segments);
+
+      if (manifest.properties.status === 'active') {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => loadTrack(code), REFRESH_INTERVAL_MS);
       }
     } catch (e) {
+      setLoading(false);
       showError('Fehler beim Laden: ' + e.message);
     }
-  }
-
-  /**
-   * Teilt die flache LineString-Koordinatenliste in Segmente auf,
-   * die durch Pause-Timestamps getrennt sind.
-   * Returns array of { coords: [[lon,lat]...], timestamps: [...] }
-   */
-  function splitIntoSegments(coords, timestamps, pauses) {
-    if (!pauses || pauses.length === 0) {
-      return [{ coords, timestamps }];
-    }
-    const pausesSorted = [...pauses].sort((a, b) => a - b);
-    const segments = [];
-    let currentCoords = [];
-    let currentTs = [];
-    let pauseIdx = 0;
-
-    for (let i = 0; i < coords.length; i++) {
-      const t = timestamps[i];
-      // Sind wir über einer Pause hinweg?
-      while (pauseIdx < pausesSorted.length && pausesSorted[pauseIdx] < t) {
-        if (currentCoords.length > 0) {
-          segments.push({ coords: currentCoords, timestamps: currentTs });
-          currentCoords = [];
-          currentTs = [];
-        }
-        pauseIdx++;
-      }
-      currentCoords.push(coords[i]);
-      currentTs.push(t);
-    }
-    if (currentCoords.length > 0) {
-      segments.push({ coords: currentCoords, timestamps: currentTs });
-    }
-    return segments;
-  }
-
-  function findLatestTimestamp(timestamps) {
-    if (!timestamps || timestamps.length === 0) return 0;
-    return timestamps[timestamps.length - 1];
   }
 
   function formatRelativeTime(unixSeconds) {
@@ -201,8 +232,7 @@
       const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
       const d = parseInt(parts[2], 10);
       const m = months[parseInt(parts[1], 10) - 1] || parts[1];
-      const y = parts[0];
-      return `${d}. ${m} ${y}`;
+      return `${d}. ${m} ${parts[0]}`;
     };
     if (start && end) {
       if (start === end) return fmt(start);
@@ -214,15 +244,15 @@
   function formatCreatedAt(iso) {
     if (!iso) return '–';
     try {
-      const d = new Date(iso);
-      return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+      return new Date(iso).toLocaleDateString('de-DE',
+        { day: 'numeric', month: 'short', year: 'numeric' });
     } catch {
       return iso;
     }
   }
 
-  function renderTrack(track) {
-    const props = track.properties;
+  function renderTrack(manifest, segments) {
+    const props = manifest.properties;
     document.getElementById('panel').style.display = 'block';
     document.getElementById('name').textContent = props.name || 'Unbenannter Törn';
 
@@ -242,22 +272,34 @@
     statusEl.textContent = props.status === 'active' ? 'aktiv' : 'beendet';
     statusEl.className = 'status ' + props.status;
 
-    const feat = track.features[0];
-    const coords = feat.geometry.coordinates || [];
-    const timestamps = (feat.properties && feat.properties.timestamps) || [];
-    // Pausen werden im Datenmodell behalten (für spätere Features),
-    // aber bei der Karten-Darstellung absichtlich ignoriert.
-    const segments = [{ coords, timestamps }];
     const s = props.stats || {};
-
-    document.getElementById('distance').textContent = `${(s.distance_total_nm || 0).toFixed(1)} nm`;
-    document.getElementById('points').textContent = s.point_count ?? coords.length;
+    document.getElementById('distance').textContent =
+      `${(s.distance_total_nm || 0).toFixed(1)} nm`;
+    document.getElementById('points').textContent = s.point_count ?? '–';
+    document.getElementById('segcount').textContent = s.segment_count ?? segments.length;
     document.getElementById('created').textContent = formatCreatedAt(props.created_at);
 
+    // Zeitkonflikt: Zwei Abschnitte überlappen sich zeitlich. Kein Datenschaden
+    // (getrennte Dateien), aber mindestens ein Anker stand falsch.
+    const conflicts = segments.filter(x => x.entry.conflict);
+    const warnEl = document.getElementById('conflict-warn');
+    if (conflicts.length > 0) {
+      warnEl.textContent =
+        `${conflicts.length} Abschnitt${conflicts.length > 1 ? 'e' : ''} mit unsicherer `
+        + `Uhrzeit (gestrichelt). Streckenverlauf und Distanz sind davon nicht betroffen.`;
+      warnEl.style.display = 'block';
+    } else {
+      warnEl.style.display = 'none';
+    }
+
+    // "Zuletzt aktualisiert" = jüngster Punkt des LETZTEN Segments. Über
+    // Segmente hinweg zu maximieren wäre falsch: Trägt ein früheres Segment
+    // wegen eines falschen Ankers zu hohe Zeitstempel, würde es das Feld
+    // dauerhaft kapern.
     const updatedEl = document.getElementById('updated');
-    if (props.status === 'active') {
-      const latest = findLatestTimestamp(timestamps);
-      const rel = formatRelativeTime(latest);
+    const last = segments[segments.length - 1];
+    if (props.status === 'active' && last && last.timestamps.length) {
+      const rel = formatRelativeTime(last.timestamps[last.timestamps.length - 1]);
       if (rel) {
         document.getElementById('updated-text').textContent = `aktualisiert ${rel}`;
         updatedEl.style.display = 'flex';
@@ -279,18 +321,24 @@
     let firstPoint = null;
     let lastPoint = null;
 
+    // Reihenfolge = Segmentreihenfolge aus dem Manifest. Bewusst NICHT nach
+    // Zeit sortiert.
     segments.forEach((seg) => {
       if (seg.coords.length === 0) return;
       const latlngs = seg.coords.map(([lon, lat]) => [lat, lon]);
-      // Glättung nur fürs Rendern – die Rohpunkte (latlngs) bleiben für
-      // Marker, Popups und Bounds erhalten.
       const smoothed = chaikin(emaSmooth(latlngs, EMA_ALPHA), CHAIKIN_ITERATIONS);
-      const line = L.polyline(smoothed, { color: POLYLINE_COLOR, weight: 3 }).addTo(map);
+
+      const line = L.polyline(smoothed, {
+        color: POLYLINE_COLOR,
+        weight: 3,
+        dashArray: seg.entry.conflict ? '8 6' : null,
+        opacity: seg.entry.conflict ? 0.75 : 1,
+      }).addTo(map);
       layers.push(line);
       allBounds.push(...latlngs);
 
       if (seg.timestamps.length === latlngs.length && seg.timestamps.length > 1) {
-        attachPointPopups(latlngs, seg.timestamps);
+        attachPointPopups(latlngs, seg.timestamps, seg.entry);
       }
 
       if (!firstPoint) firstPoint = latlngs[0];
@@ -322,7 +370,9 @@
     }
   }
 
-  function attachPointPopups(latlngs, timestamps) {
+  function attachPointPopups(latlngs, timestamps, entry) {
+    // Popup-Dichte pro Segment begrenzen, sonst hängt der Browser bei 18.000
+    // Punkten. 100 Marker je Segment reichen.
     const step = Math.max(1, Math.floor(latlngs.length / 100));
     for (let i = 1; i < latlngs.length; i += step) {
       const prev = latlngs[i - 1];
@@ -335,7 +385,9 @@
         hour: '2-digit', minute: '2-digit',
         day: '2-digit', month: '2-digit', year: 'numeric',
       });
-      const popup = `<b>${timeStr}</b><br>SOG: ${sog.toFixed(1)} kn`;
+      const warn = entry.conflict
+        ? '<br><span style="color:#8a5a10">Uhrzeit unsicher</span>' : '';
+      const popup = `<b>${timeStr}</b><br>SOG: ${sog.toFixed(1)} kn${warn}`;
       const m = L.circleMarker(cur, {
         radius: 4, color: POLYLINE_COLOR, fillOpacity: 0, weight: 0,
       }).bindPopup(popup).addTo(map);
