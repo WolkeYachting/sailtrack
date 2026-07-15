@@ -36,7 +36,7 @@
       "opened_at": "2026-07-15T13:21:56.396433Z",
       "closed_at": "2026-07-15T13:27:26.190284Z",
       "closed": true,
-      "conflict": false
+      "conflict": true
     },
     {
       "id": "s002",
@@ -57,7 +57,7 @@
       "opened_at": "2026-07-15T13:27:33.400685Z",
       "closed_at": "2026-07-15T13:30:41.338166Z",
       "closed": true,
-      "conflict": false
+      "conflict": true
     },
     {
       "id": "s003",
@@ -78,7 +78,7 @@
       "opened_at": "2026-07-15T13:30:46.238579Z",
       "closed_at": "2026-07-15T13:34:24.895330Z",
       "closed": true,
-      "conflict": false
+      "conflict": true
     }
   ]
 }
