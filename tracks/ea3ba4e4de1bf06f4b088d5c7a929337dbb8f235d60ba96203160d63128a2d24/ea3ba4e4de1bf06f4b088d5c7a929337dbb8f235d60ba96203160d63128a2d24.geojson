@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "type": "TrackManifest",
+  "properties": {
+    "id": "EMMK7A7JRNCC",
+    "name": "irykgykgy",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-07-15T14:37:55.377235Z",
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0,
+      "segment_count": 0
+    }
+  },
+  "segments": []
+}
