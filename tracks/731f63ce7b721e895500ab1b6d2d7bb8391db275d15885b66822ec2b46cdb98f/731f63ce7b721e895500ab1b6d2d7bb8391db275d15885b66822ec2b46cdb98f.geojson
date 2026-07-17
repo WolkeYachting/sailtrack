@@ -11,8 +11,8 @@
     "status": "active",
     "created_at": "2026-07-17T18:19:07.642223Z",
     "stats": {
-      "distance_total_nm": 1.763,
-      "point_count": 623,
+      "distance_total_nm": 2.796,
+      "point_count": 923,
       "segment_count": 1
     }
   },
@@ -21,10 +21,10 @@
       "id": "s001",
       "file": "731f63ce7b721e895500ab1b6d2d7bb8391db275d15885b66822ec2b46cdb98f-s001.geojson",
       "t_start": 1784315938,
-      "t_stop": 1784317376,
-      "point_count": 623,
-      "distance_nm": 1.763,
-      "ts_hash": "62bfa40bd1860dd6",
+      "t_stop": 1784317976,
+      "point_count": 923,
+      "distance_nm": 2.796,
+      "ts_hash": "4cbb661ff8b75fee",
       "anchor": {
         "known": true,
         "boot_id": "26",
