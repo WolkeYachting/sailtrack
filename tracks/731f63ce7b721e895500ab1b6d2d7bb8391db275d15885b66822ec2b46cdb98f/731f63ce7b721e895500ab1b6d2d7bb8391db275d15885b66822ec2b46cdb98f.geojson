@@ -118,8 +118,8 @@
         "uncertain": false
       },
       "opened_at": "2026-07-20T11:13:41.228963Z",
-      "closed_at": null,
-      "closed": false,
+      "closed_at": "2026-07-20T17:00:29.300324Z",
+      "closed": true,
       "conflict": false
     }
   ]
