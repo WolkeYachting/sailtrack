@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "properties": {
+    "version": 3,
+    "track_id": "XKBP2RRQKXPZ",
+    "segment": "s005",
+    "opened_at": "2026-07-20T11:13:41.228963Z",
+    "closed_at": null,
+    "anchor": {
+      "known": true,
+      "boot_id": "26",
+      "mono_anchor_ms": 419576415,
+      "wall_anchor_ms": 1784545958200,
+      "anchored_at_t": 1784545958,
+      "uncertain": false
+    },
+    "stats": {
+      "distance_nm": 0.0,
+      "point_count": 0,
+      "t_start": null,
+      "t_stop": null
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": []
+      },
+      "properties": {
+        "timestamps": []
+      }
+    }
+  ]
+}
