@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "type": "TrackManifest",
+  "properties": {
+    "id": "PRNQW5VVYW5Z",
+    "name": "JTC Lofoten - 24.07.26",
+    "boat": "Arctic Breeze",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": "2026-07-24",
+    "trip_end": "2026-07-31",
+    "status": "active",
+    "created_at": "2026-07-23T18:45:54.954401Z",
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0,
+      "segment_count": 0
+    }
+  },
+  "segments": []
+}
