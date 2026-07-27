@@ -97,8 +97,8 @@
         "uncertain": false
       },
       "opened_at": "2026-07-27T08:58:13.982256Z",
-      "closed_at": null,
-      "closed": false,
+      "closed_at": "2026-07-27T09:53:27.765172Z",
+      "closed": true,
       "conflict": false
     }
   ]
