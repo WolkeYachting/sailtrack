@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "type": "TrackManifest",
+  "properties": {
+    "id": "GC8DC4YF677S",
+    "name": "dgugc",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-08-05T19:20:19.871478Z",
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0,
+      "segment_count": 0
+    }
+  },
+  "segments": []
+}
