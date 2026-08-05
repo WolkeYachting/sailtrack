@@ -20,18 +20,24 @@
     {
       "id": "s001",
       "file": "cf4d3c8ddcfc565a433bd0b4b99a8d7895cd19815ce3703ac6c7f22fc6f5fd94-s001.geojson",
-      "t_start": 1785957599,
-      "t_stop": 1785957625,
+      "t_start": 1785860273,
+      "t_stop": 1785860299,
       "point_count": 14,
       "distance_nm": 0.004,
-      "ts_hash": "3b06bfaff1162d84",
+      "ts_hash": "46ac97e0e7bebf89",
       "anchor": {
         "known": true,
         "boot_id": "26",
         "mono_anchor_ms": 1831204561,
-        "wall_anchor_ms": 1785957585332,
+        "wall_anchor_ms": 1785860259332,
         "anchored_at_t": 1785957585,
-        "uncertain": false
+        "uncertain": false,
+        "shifts": [
+          {
+            "delta": -97326,
+            "at": "2026-08-05T19:22:14.045532Z"
+          }
+        ]
       },
       "opened_at": "2026-08-05T19:20:29.544901Z",
       "closed_at": "2026-08-05T19:20:34.237594Z",
