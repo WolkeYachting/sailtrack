@@ -65,13 +65,93 @@
   .error { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
            background: white; padding: 2rem; border-radius: 10px;
            box-shadow: 0 4px 16px rgba(0,0,0,0.15); text-align: center; z-index: 1000; }
+
+  /* --- Info-Toggle -------------------------------------------------------- */
+  .info-btn {
+    position: absolute; top: 1rem; left: 1rem; z-index: 1000;
+    width: 2.2rem; height: 2.2rem; border-radius: 50%;
+    background: rgba(255,255,255,0.95); border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    font-size: 1.1rem; font-weight: 700; font-style: italic;
+    font-family: Georgia, serif; color: #2a7cc7;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .info-btn:hover { background: #fff; }
+  .panel { padding-right: 2.4rem; }
+  .panel .close {
+    position: absolute; top: 0.5rem; right: 0.5rem;
+    width: 1.7rem; height: 1.7rem; border: none; background: transparent;
+    color: #7a8896; font-size: 1.2rem; line-height: 1; cursor: pointer;
+    border-radius: 4px;
+  }
+  .panel .close:hover { background: #eef3f7; color: #1a2733; }
+
+  /* Zoom-Control nach rechts, unter den "zurück"-Link. */
+  .leaflet-top.leaflet-right { margin-top: 3.1rem; }
+
+  /* --- Playback-Leiste ---------------------------------------------------- */
+  .playbar {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 1000;
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
+    padding: 0.55rem 0.9rem;
+    display: flex; align-items: center; gap: 0.7rem;
+    font-size: 0.85rem;
+  }
+  .playbar button.pb-icon {
+    width: 2.2rem; height: 2.2rem; flex: 0 0 auto;
+    border: none; border-radius: 50%; background: #2a7cc7; color: #fff;
+    font-size: 0.95rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .playbar button.pb-icon:hover { background: #1f6aad; }
+  .playbar input[type=range] {
+    flex: 1 1 auto; min-width: 60px; accent-color: #2a7cc7; cursor: pointer;
+  }
+  .playbar .sog {
+    flex: 0 0 auto; font-variant-numeric: tabular-nums;
+    min-width: 4.4rem; text-align: right; font-weight: 600;
+  }
+  .playbar .sog .unit { font-weight: 400; color: #5a6876; margin-left: 0.15rem; }
+  .playbar select {
+    flex: 0 0 auto; border: 1px solid #d0dce6; border-radius: 6px;
+    padding: 0.3rem 0.35rem; font-size: 0.8rem; background: #fff; cursor: pointer;
+  }
+  .playbar .toggle {
+    flex: 0 0 auto; border: 1px solid #d0dce6; border-radius: 6px;
+    padding: 0.35rem 0.55rem; font-size: 0.8rem; background: #fff;
+    cursor: pointer; color: #5a6876; white-space: nowrap;
+  }
+  .playbar .toggle.on { background: #2a7cc7; border-color: #2a7cc7; color: #fff; }
+
+  /* Leaflet-Controls und Attribution über der Playbar halten. */
+  body.pb-on .leaflet-bottom.leaflet-right,
+  body.pb-on .leaflet-bottom.leaflet-left { margin-bottom: 3.4rem; }
+
+  /* Boot-Marker: Leaflet setzt translate3d auf das Icon-Root, deshalb wird
+     ausschließlich das innere Element rotiert. */
+  .boat-icon { background: none; border: none; }
+  .boat-icon .rot { width: 100%; height: 100%; transform-origin: 50% 50%; }
+
+  @media (max-width: 600px) {
+    .panel { max-width: calc(100vw - 2rem); }
+    .playbar { flex-wrap: wrap; gap: 0.5rem 0.6rem; }
+    .playbar input[type=range] { order: 5; flex-basis: 100%; }
+    /* Playbar bricht hier auf zwei Zeilen um und wird entsprechend höher. */
+    body.pb-on .leaflet-bottom.leaflet-right,
+    body.pb-on .leaflet-bottom.leaflet-left { margin-bottom: 5.6rem; }
+  }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <a href="index.html" class="back">← zurück</a>
 <div class="loading" id="loading" style="display:none">lädt …</div>
+<button class="info-btn" id="info-btn" style="display:none" title="Törn-Info einblenden"
+        aria-label="Törn-Info einblenden">i</button>
 <div class="panel" id="panel" style="display:none">
+  <button class="close" id="panel-close" title="Info ausblenden"
+          aria-label="Info ausblenden">&times;</button>
   <div class="status" id="status"></div>
   <h2 id="name"></h2>
   <div class="meta" id="meta"></div>
@@ -93,6 +173,19 @@
   </details>
 </div>
 <div class="error" id="error" style="display:none"></div>
+
+<div class="playbar" id="playbar" style="display:none">
+  <button class="pb-icon" id="pb-play" title="Abspielen" aria-label="Abspielen">&#9654;</button>
+  <input type="range" id="pb-slider" min="0" max="0" value="0" step="1" aria-label="Position im Törn">
+  <div class="sog"><span id="pb-sog">–</span><span class="unit">kn</span></div>
+  <select id="pb-speed" aria-label="Abspielgeschwindigkeit">
+    <option value="50">50 Pkt/s</option>
+    <option value="200" selected>200 Pkt/s</option>
+    <option value="800">800 Pkt/s</option>
+    <option value="2000">2000 Pkt/s</option>
+  </select>
+  <button class="toggle" id="pb-follow" title="Karte folgt dem Boot">Folgen</button>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -119,7 +212,16 @@
 
   const DATA_BASE = 'https://wolkeyachting.github.io/sailtrack';
   const REFRESH_INTERVAL_MS = 30000;
-  const POLYLINE_COLOR = '#2a7cc7';
+
+  // Trackfarbe je Basiskarte. Auf dem Satellitenbild wäre das Blau der
+  // Standardfarbe auf blauem Wasser praktisch unsichtbar.
+  const TRACK_COLORS = {
+    'OpenStreetMap': '#2a7cc7',
+    'Satellit': '#ffcc00',
+    'Seekarte (Esri)': '#d6392a',
+  };
+  const DEFAULT_BASE = 'OpenStreetMap';
+  let POLYLINE_COLOR = TRACK_COLORS[DEFAULT_BASE];
   // Display-Glättung: EMA dämpft das Rauschen, Chaikin rundet die Ecken.
   // Beide arbeiten nur auf der Anzeige – die Rohpunkte bleiben unverändert.
   const EMA_ALPHA = 0.35;
@@ -130,13 +232,44 @@
     showError('Ungültiger Code im Link.');
   }
 
-  const map = L.map('map').setView([54, 10], 6);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '© OpenStreetMap'
-  }).addTo(map);
-  L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-    maxZoom: 18, attribution: '© OpenSeaMap'
-  }).addTo(map);
+  const map = L.map('map', { zoomControl: false }).setView([54, 10], 6);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  const baseMaps = {
+    'OpenStreetMap': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }),
+    // Achtung bei den Esri-URLs: {y} steht VOR {x}.
+    'Satellit': L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19, maxNativeZoom: 18,
+      attribution: '© Esri, Maxar, Earthstar Geographics'
+    }),
+    'Seekarte (Esri)': L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19, maxNativeZoom: 13,
+      attribution: '© Esri, GEBCO, NOAA'
+    }),
+  };
+  const seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+    maxZoom: 19, maxNativeZoom: 18, attribution: '© OpenSeaMap'
+  });
+
+  baseMaps[DEFAULT_BASE].addTo(map);
+  seamarkLayer.addTo(map);
+  L.control.layers(baseMaps, { 'Seezeichen (OpenSeaMap)': seamarkLayer },
+                   { position: 'bottomright' }).addTo(map);
+
+  // Basiskartenwechsel färbt Track und Boot um.
+  map.on('baselayerchange', (e) => {
+    POLYLINE_COLOR = TRACK_COLORS[e.name] || '#2a7cc7';
+    for (const l of layers) {
+      if (l.setStyle && l.options && l.options.__trackStyled) {
+        l.setStyle({ color: POLYLINE_COLOR });
+      }
+    }
+    applyBoatColor();
+  });
 
   let layers = [];
   let lastFitBoundsHash = null;
@@ -150,6 +283,16 @@
   // kommen aus dem Cache.
   const segCache = new Map();
   let refreshTimer = null;
+  let isActive = false;
+
+  // Bei laufendem Playback wird nicht nachgeladen: redrawMap() räumt alle Layer
+  // ab, das würde die Wiedergabe zerreißen. Nach dem Stoppen läuft der Refresh
+  // wieder an.
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    if (!isActive || pb.playing) return;
+    refreshTimer = setTimeout(() => loadTrack(code), REFRESH_INTERVAL_MS);
+  }
 
   if (/^[A-Z2-9]{12}$/.test(code)) {
     loadTrack(code);
@@ -201,10 +344,8 @@
       setLoading(false);
       renderTrack(manifest, segments);
 
-      if (manifest.properties.status === 'active') {
-        clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(() => loadTrack(code), REFRESH_INTERVAL_MS);
-      }
+      isActive = manifest.properties.status === 'active';
+      scheduleRefresh();
     } catch (e) {
       setLoading(false);
       showError('Fehler beim Laden: ' + e.message);
@@ -253,7 +394,10 @@
 
   function renderTrack(manifest, segments) {
     const props = manifest.properties;
-    document.getElementById('panel').style.display = 'block';
+    if (!panelAvailable) {
+      panelAvailable = true;
+      setPanelOpen(panelDefault(), false);
+    }
     document.getElementById('name').textContent = props.name || 'Unbenannter Törn';
 
     const metaParts = [props.boat, props.skipper].filter(Boolean);
@@ -320,19 +464,24 @@
     const allBounds = [];
     let firstPoint = null;
     let lastPoint = null;
+    const playSegs = [];
 
     // Reihenfolge = Segmentreihenfolge aus dem Manifest. Bewusst NICHT nach
     // Zeit sortiert.
-    segments.forEach((seg) => {
+    segments.forEach((seg, segIdx) => {
       if (seg.coords.length === 0) return;
       const latlngs = seg.coords.map(([lon, lat]) => [lat, lon]);
-      const smoothed = chaikin(emaSmooth(latlngs, EMA_ALPHA), CHAIKIN_ITERATIONS);
+      // EMA erhält die Punktzahl 1:1, Chaikin vervierfacht sie. Das Boot läuft
+      // deshalb auf den EMA-Punkten – nur so bleibt Index ↔ Timestamp gültig.
+      const ema = emaSmooth(latlngs, EMA_ALPHA);
+      const smoothed = chaikin(ema, CHAIKIN_ITERATIONS);
 
       const line = L.polyline(smoothed, {
         color: POLYLINE_COLOR,
         weight: 3,
         dashArray: seg.entry.conflict ? '8 6' : null,
         opacity: seg.entry.conflict ? 0.75 : 1,
+        __trackStyled: true,
       }).addTo(map);
       layers.push(line);
       allBounds.push(...latlngs);
@@ -341,9 +490,13 @@
         attachPointPopups(latlngs, seg.timestamps, seg.entry);
       }
 
+      playSegs.push({ pts: ema, timestamps: seg.timestamps, segIdx });
+
       if (!firstPoint) firstPoint = latlngs[0];
       lastPoint = latlngs[latlngs.length - 1];
     });
+
+    buildPlayback(playSegs);
 
     if (firstPoint) {
       const m = L.circleMarker(firstPoint, {
@@ -363,8 +516,12 @@
     if (allBounds.length > 0) {
       const bounds = L.latLngBounds(allBounds);
       const boundsHash = bounds.toBBoxString();
-      if (boundsHash !== lastFitBoundsHash) {
+      // Nicht auf den Gesamttörn zurückzoomen, während der Betrachter dem Boot
+      // folgt oder ein Playback läuft – das würde die Ansicht wegreißen.
+      if (boundsHash !== lastFitBoundsHash && !pb.follow && !pb.playing) {
         map.fitBounds(bounds, { padding: [60, 60] });
+        lastFitBoundsHash = boundsHash;
+      } else if (boundsHash !== lastFitBoundsHash) {
         lastFitBoundsHash = boundsHash;
       }
     }
@@ -394,6 +551,324 @@
       layers.push(m);
     }
   }
+
+  // --- Playback -------------------------------------------------------------
+  //
+  // Der Slider läuft über den PUNKTINDEX über alle Segmente hinweg, nicht über
+  // die Zeit. Damit ist er automatisch immun gegen falsch verankerte Segmente:
+  // es wird nie über Segmentgrenzen hinweg nach Zeit sortiert. Pausen zwischen
+  // Segmenten werden übersprungen, weil es dort schlicht keine Punkte gibt.
+  //
+  // Die Timestamps werden trotzdem mitgeführt – für die SOG-Anzeige.
+
+  // Gemitteltes Zeitfenster für SOG und Kurs. Roh wäre beides bei 2-Sekunden-
+  // Sampling reines Rauschen.
+  const SOG_WINDOW_S = 30;
+  const COG_WINDOW_S = 20;
+  const COG_MIN_POINTS = 5;
+
+  const pb = {
+    lat: [], lon: [], t: [], seg: [], cum: [],   // flache Arrays über alle Segmente
+    n: 0,
+    index: 0,          // Fließkomma-Position im Track
+    playing: false,
+    follow: false,
+    pps: 200,          // Punkte pro Sekunde
+    raf: null,
+    lastFrame: null,
+    marker: null,
+    color: '#c72a2a',
+  };
+
+  const el = {
+    playbar: document.getElementById('playbar'),
+    play: document.getElementById('pb-play'),
+    slider: document.getElementById('pb-slider'),
+    sog: document.getElementById('pb-sog'),
+    speed: document.getElementById('pb-speed'),
+    follow: document.getElementById('pb-follow'),
+  };
+
+  /**
+   * Baut die flachen Playback-Arrays aus den (EMA-geglätteten) Segmentpunkten.
+   * Wird bei jedem Redraw neu aufgerufen; die Slider-Position bleibt erhalten,
+   * weil neue Punkte bei einem laufenden Törn hinten angehängt werden.
+   */
+  function buildPlayback(playSegs) {
+    const lat = [], lon = [], t = [], seg = [], cum = [];
+    for (const s of playSegs) {
+      const ts = usableTimestamps(s.timestamps, s.pts.length);
+      let running = 0;
+      for (let i = 0; i < s.pts.length; i++) {
+        if (i > 0) {
+          running += haversineNm(s.pts[i - 1][0], s.pts[i - 1][1],
+                                 s.pts[i][0], s.pts[i][1]);
+        }
+        lat.push(s.pts[i][0]);
+        lon.push(s.pts[i][1]);
+        t.push(ts ? ts[i] : null);
+        seg.push(s.segIdx);
+        cum.push(running);   // Distanz ab Segmentanfang
+      }
+    }
+
+    pb.lat = lat; pb.lon = lon; pb.t = t; pb.seg = seg; pb.cum = cum;
+    pb.n = lat.length;
+
+    if (pb.n < 2) {
+      hidePlaybar();
+      return;
+    }
+
+    el.slider.max = String(pb.n - 1);
+    if (pb.index > pb.n - 1) pb.index = pb.n - 1;
+    showPlaybar();
+    ensureBoat();
+    updateBoat();
+  }
+
+  /**
+   * Segmente ohne passende Timestamp-Länge liefern sonst gar keine SOG. Liegen
+   * wenigstens Anfang und Ende vor, wird linear interpoliert; sonst gibt es für
+   * dieses Segment keine Geschwindigkeit.
+   */
+  function usableTimestamps(ts, len) {
+    if (!ts || ts.length === 0 || len === 0) return null;
+    if (ts.length === len) return ts;
+    const a = ts[0], b = ts[ts.length - 1];
+    if (!a || !b || b <= a || len < 2) return null;
+    const out = new Array(len);
+    for (let i = 0; i < len; i++) out[i] = a + (b - a) * (i / (len - 1));
+    return out;
+  }
+
+  function showPlaybar() {
+    el.playbar.style.display = 'flex';
+    document.body.classList.add('pb-on');
+  }
+  function hidePlaybar() {
+    el.playbar.style.display = 'none';
+    document.body.classList.remove('pb-on');
+    setPlaying(false);
+    if (pb.marker) { map.removeLayer(pb.marker); pb.marker = null; }
+  }
+
+  function boatSvg(color) {
+    return `<div class="rot"><svg viewBox="0 0 24 24" width="26" height="26">
+      <path d="M12 1.5 C15.4 6 16.6 12.5 16 20.5 L8 20.5 C7.4 12.5 8.6 6 12 1.5 Z"
+            fill="${color}" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M12 5 L12 18" stroke="#ffffff" stroke-width="1.1" opacity="0.85"/>
+    </svg></div>`;
+  }
+
+  function ensureBoat() {
+    if (pb.marker) return;
+    pb.marker = L.marker([pb.lat[0], pb.lon[0]], {
+      icon: L.divIcon({
+        className: 'boat-icon',
+        html: boatSvg(pb.color),
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      }),
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 1000,
+    }).addTo(map);
+  }
+
+  function applyBoatColor() {
+    // Auf der Esri-Seekarte ist der Track selbst rot – dann muss das Boot weg
+    // vom Rot, sonst verschwindet es auf der eigenen Linie.
+    pb.color = (POLYLINE_COLOR === '#d6392a') ? '#1a2733' : '#c72a2a';
+    if (!pb.marker) return;
+    const rot = pb.marker.getElement() &&
+                pb.marker.getElement().querySelector('.rot');
+    const angle = rot ? rot.style.transform : '';
+    pb.marker.setIcon(L.divIcon({
+      className: 'boat-icon', html: boatSvg(pb.color),
+      iconSize: [26, 26], iconAnchor: [13, 13],
+    }));
+    const rot2 = pb.marker.getElement() &&
+                 pb.marker.getElement().querySelector('.rot');
+    if (rot2 && angle) rot2.style.transform = angle;
+  }
+
+  /** Kurs über einem Fenster, damit das Boot im Hafen nicht zappelt. */
+  function bearingAt(i) {
+    const segId = pb.seg[i];
+    let j = i;
+    while (j > 0 && pb.seg[j - 1] === segId && (i - j) < 400) {
+      const enoughPoints = (i - j) >= COG_MIN_POINTS;
+      const haveTime = pb.t[i] != null && pb.t[j] != null;
+      const enoughTime = haveTime ? (pb.t[i] - pb.t[j]) >= COG_WINDOW_S : true;
+      if (enoughPoints && enoughTime) break;
+      j--;
+    }
+    // Am Segmentanfang gibt es keine Vorgeschichte – dann nach vorne schauen.
+    if (j === i) {
+      let k = i;
+      while (k < pb.n - 1 && pb.seg[k + 1] === segId && (k - i) < 400) {
+        const enoughPoints = (k - i) >= COG_MIN_POINTS;
+        const haveTime = pb.t[i] != null && pb.t[k] != null;
+        const enoughTime = haveTime ? (pb.t[k] - pb.t[i]) >= COG_WINDOW_S : true;
+        if (enoughPoints && enoughTime) break;
+        k++;
+      }
+      if (k === i) return null;
+      return bearingBetween(pb.lat[i], pb.lon[i], pb.lat[k], pb.lon[k]);
+    }
+    return bearingBetween(pb.lat[j], pb.lon[j], pb.lat[i], pb.lon[i]);
+  }
+
+  function bearingBetween(lat1d, lon1d, lat2d, lon2d) {
+    const toRad = (d) => d * Math.PI / 180;
+    const lat1 = toRad(lat1d), lat2 = toRad(lat2d);
+    const dLon = toRad(lon2d - lon1d);
+    const y = Math.sin(dLon) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) -
+              Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    if (y === 0 && x === 0) return null;
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  /** SOG aus der zurückgelegten Strecke im Zeitfenster, nie über Segmentgrenzen. */
+  function sogAt(i) {
+    if (pb.t[i] == null) return null;
+    const segId = pb.seg[i];
+    let j = i;
+    while (j > 0 && pb.seg[j - 1] === segId && pb.t[j - 1] != null &&
+           (pb.t[i] - pb.t[j]) < SOG_WINDOW_S) {
+      j--;
+      if (i - j > 2000) break;
+    }
+    // Am Segmentanfang nach vorne schauen statt nichts anzuzeigen.
+    if (j === i) {
+      let k = i;
+      while (k < pb.n - 1 && pb.seg[k + 1] === segId && pb.t[k + 1] != null &&
+             (pb.t[k] - pb.t[i]) < SOG_WINDOW_S) {
+        k++;
+        if (k - i > 2000) break;
+      }
+      if (k === i) return null;
+      const dt = pb.t[k] - pb.t[i];
+      if (dt <= 0) return null;
+      return ((pb.cum[k] - pb.cum[i]) * 3600) / dt;
+    }
+    const dt = pb.t[i] - pb.t[j];
+    if (dt <= 0) return null;
+    return ((pb.cum[i] - pb.cum[j]) * 3600) / dt;
+  }
+
+  function updateBoat() {
+    if (pb.n < 2 || !pb.marker) return;
+    const i = Math.min(pb.n - 1, Math.max(0, Math.round(pb.index)));
+    const ll = [pb.lat[i], pb.lon[i]];
+    pb.marker.setLatLng(ll);
+
+    const brg = bearingAt(i);
+    const rot = pb.marker.getElement() &&
+                pb.marker.getElement().querySelector('.rot');
+    if (rot && brg != null) rot.style.transform = `rotate(${brg.toFixed(1)}deg)`;
+
+    const sog = sogAt(i);
+    el.sog.textContent = sog == null ? '–' : sog.toFixed(1);
+
+    if (document.activeElement !== el.slider) el.slider.value = String(i);
+
+    if (pb.follow) keepInView(ll);
+  }
+
+  /**
+   * Nachziehen erst, wenn das Boot den inneren Bereich verlässt – sonst würde
+   * die Karte bei jedem Frame neu zentriert und flackert.
+   */
+  function keepInView(ll) {
+    const p = map.latLngToContainerPoint(ll);
+    const s = map.getSize();
+    const mx = s.x * 0.25, my = s.y * 0.25;
+    if (p.x < mx || p.x > s.x - mx || p.y < my || p.y > s.y - my) {
+      map.setView(ll, map.getZoom(), { animate: false });
+    }
+  }
+
+  function setPlaying(on) {
+    if (on && pb.n < 2) return;
+    pb.playing = on;
+    el.play.innerHTML = on ? '&#10074;&#10074;' : '&#9654;';
+    el.play.title = on ? 'Pause' : 'Abspielen';
+    el.play.setAttribute('aria-label', el.play.title);
+
+    if (on) {
+      if (pb.index >= pb.n - 1) pb.index = 0;
+      pb.lastFrame = null;
+      pb.raf = requestAnimationFrame(frame);
+      clearTimeout(refreshTimer);     // Auto-Refresh würde das Playback zerreißen
+    } else {
+      if (pb.raf) cancelAnimationFrame(pb.raf);
+      pb.raf = null;
+      scheduleRefresh();
+    }
+  }
+
+  function frame(ts) {
+    if (!pb.playing) return;
+    if (pb.lastFrame != null) {
+      // Deckeln, damit ein Tabwechsel keinen Riesensprung erzeugt.
+      const dt = Math.min((ts - pb.lastFrame) / 1000, 0.1);
+      pb.index += pb.pps * dt;
+      if (pb.index >= pb.n - 1) {
+        pb.index = pb.n - 1;
+        updateBoat();
+        setPlaying(false);
+        return;
+      }
+    }
+    pb.lastFrame = ts;
+    updateBoat();
+    pb.raf = requestAnimationFrame(frame);
+  }
+
+  el.play.addEventListener('click', () => setPlaying(!pb.playing));
+  el.slider.addEventListener('input', () => {
+    pb.index = Number(el.slider.value);
+    pb.lastFrame = null;
+    updateBoat();
+  });
+  el.speed.addEventListener('change', () => { pb.pps = Number(el.speed.value); });
+  el.follow.addEventListener('click', () => {
+    pb.follow = !pb.follow;
+    el.follow.classList.toggle('on', pb.follow);
+    if (pb.follow && pb.n > 1) {
+      const i = Math.min(pb.n - 1, Math.max(0, Math.round(pb.index)));
+      map.setView([pb.lat[i], pb.lon[i]], Math.max(map.getZoom(), 12));
+    }
+  });
+
+  // --- Info-Panel -----------------------------------------------------------
+
+  const PANEL_KEY = 'sailtrack.panelOpen';
+  let panelAvailable = false;
+
+  function panelDefault() {
+    const stored = localStorage.getItem(PANEL_KEY);
+    if (stored === '1') return true;
+    if (stored === '0') return false;
+    return window.innerWidth >= 768;
+  }
+
+  function setPanelOpen(open, persist) {
+    if (!panelAvailable) return;
+    document.getElementById('panel').style.display = open ? 'block' : 'none';
+    document.getElementById('info-btn').style.display = open ? 'none' : 'flex';
+    if (persist) {
+      try { localStorage.setItem(PANEL_KEY, open ? '1' : '0'); } catch (e) {}
+    }
+  }
+
+  document.getElementById('info-btn')
+    .addEventListener('click', () => setPanelOpen(true, true));
+  document.getElementById('panel-close')
+    .addEventListener('click', () => setPanelOpen(false, true));
 
   // --- Display-Glättung -----------------------------------------------------
 
