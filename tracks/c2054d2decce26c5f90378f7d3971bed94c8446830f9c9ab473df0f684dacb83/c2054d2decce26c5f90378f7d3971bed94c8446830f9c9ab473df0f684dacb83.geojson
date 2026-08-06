@@ -13,7 +13,7 @@
     "stats": {
       "distance_total_nm": 0.051,
       "point_count": 36,
-      "segment_count": 3
+      "segment_count": 4
     }
   },
   "segments": [
@@ -78,6 +78,27 @@
       "opened_at": "2026-08-06T20:13:37.407329Z",
       "closed_at": "2026-08-06T20:13:44.560471Z",
       "closed": true,
+      "conflict": false
+    },
+    {
+      "id": "s004",
+      "file": "c2054d2decce26c5f90378f7d3971bed94c8446830f9c9ab473df0f684dacb83-s004.geojson",
+      "t_start": null,
+      "t_stop": null,
+      "point_count": 0,
+      "distance_nm": 0.0,
+      "ts_hash": "cbf29ce484222325",
+      "anchor": {
+        "known": true,
+        "boot_id": "26",
+        "mono_anchor_ms": 1922797140,
+        "wall_anchor_ms": 1786049177905,
+        "anchored_at_t": 1786049177,
+        "uncertain": false
+      },
+      "opened_at": "2026-08-06T20:46:53.033877Z",
+      "closed_at": null,
+      "closed": false,
       "conflict": false
     }
   ]
