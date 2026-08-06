@@ -15,10 +15,10 @@
       "uncertain": false
     },
     "stats": {
-      "distance_nm": 0.0,
-      "point_count": 0,
-      "t_start": null,
-      "t_stop": null
+      "distance_nm": 0.003,
+      "point_count": 3,
+      "t_start": 1786049179,
+      "t_stop": 1786049181
     }
   },
   "features": [
@@ -26,10 +26,27 @@
       "type": "Feature",
       "geometry": {
         "type": "LineString",
-        "coordinates": []
+        "coordinates": [
+          [
+            8.3976921,
+            51.5729397
+          ],
+          [
+            8.3976502,
+            51.5729257
+          ],
+          [
+            8.397621050000001,
+            51.5729104
+          ]
+        ]
       },
       "properties": {
-        "timestamps": []
+        "timestamps": [
+          1786049179,
+          1786049180,
+          1786049181
+        ]
       }
     }
   ]
