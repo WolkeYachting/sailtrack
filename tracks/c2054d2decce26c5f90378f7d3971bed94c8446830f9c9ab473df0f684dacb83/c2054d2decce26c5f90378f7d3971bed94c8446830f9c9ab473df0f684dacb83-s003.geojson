@@ -16,9 +16,9 @@
     },
     "stats": {
       "distance_nm": 0.0,
-      "point_count": 0,
-      "t_start": null,
-      "t_stop": null
+      "point_count": 2,
+      "t_start": 1786047208,
+      "t_stop": 1786047210
     }
   },
   "features": [
@@ -26,10 +26,22 @@
       "type": "Feature",
       "geometry": {
         "type": "LineString",
-        "coordinates": []
+        "coordinates": [
+          [
+            8.3975789,
+            51.5728601
+          ],
+          [
+            8.3975793,
+            51.5728634
+          ]
+        ]
       },
       "properties": {
-        "timestamps": []
+        "timestamps": [
+          1786047208,
+          1786047210
+        ]
       }
     }
   ]
