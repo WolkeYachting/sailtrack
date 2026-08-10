@@ -67,24 +67,40 @@
            box-shadow: 0 4px 16px rgba(0,0,0,0.15); text-align: center; z-index: 1000; }
 
   /* --- Info-Toggle -------------------------------------------------------- */
-  .info-btn {
+  /* --- Buttonleiste oben links -------------------------------------------- */
+  .topbar {
     position: absolute; top: 1rem; left: 1rem; z-index: 1000;
+    display: flex; gap: 0.4rem;
+  }
+  .tb-btn {
     width: 2.2rem; height: 2.2rem; border-radius: 50%;
     background: rgba(255,255,255,0.95); border: none;
     box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    font-size: 1.1rem; font-weight: 700; font-style: italic;
-    font-family: Georgia, serif; color: #2a7cc7;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #2a7cc7; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; line-height: 1; padding: 0;
   }
-  .info-btn:hover { background: #fff; }
-  .panel { padding-right: 2.4rem; }
-  .panel .close {
-    position: absolute; top: 0.5rem; right: 0.5rem;
-    width: 1.7rem; height: 1.7rem; border: none; background: transparent;
-    color: #7a8896; font-size: 1.2rem; line-height: 1; cursor: pointer;
-    border-radius: 4px;
+  .tb-btn:hover { background: #fff; }
+  .tb-btn.on { background: #2a7cc7; color: #fff; }
+  .tb-btn.on:hover { background: #1f6aad; }
+  .tb-btn[disabled] { opacity: 0.4; cursor: default; }
+  .tb-btn.info { font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 1.1rem; }
+  .tb-btn svg { display: block; }
+
+  /* Panel sitzt unter der Buttonleiste, nicht an ihrer Stelle. */
+  .panel { top: 3.7rem; }
+
+  /* --- Live-Infobox am Schiff ---------------------------------------------- */
+  .leaflet-tooltip.live-tip {
+    background: rgba(255,255,255,0.95); border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    border-radius: 8px; padding: 0.35rem 0.55rem;
+    font-size: 0.75rem; color: #1a2733; line-height: 1.35;
+    white-space: nowrap;
   }
-  .panel .close:hover { background: #eef3f7; color: #1a2733; }
+  .leaflet-tooltip.live-tip::before { display: none; }
+  .live-tip .sogline { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .live-tip .agoline { color: #5a6876; }
 
   /* Zoom-Control nach rechts, unter den "zurück"-Link. */
   .leaflet-top.leaflet-right { margin-top: 3.1rem; }
@@ -147,11 +163,19 @@
 <div id="map"></div>
 <a href="index.html" class="back">← zurück</a>
 <div class="loading" id="loading" style="display:none">lädt …</div>
-<button class="info-btn" id="info-btn" style="display:none" title="Törn-Info einblenden"
-        aria-label="Törn-Info einblenden">i</button>
+<div class="topbar" id="topbar" style="display:none">
+  <button class="tb-btn info" id="btn-info" title="Törn-Info" aria-label="Törn-Info">i</button>
+  <button class="tb-btn" id="btn-play" title="Törn abspielen" aria-label="Törn abspielen">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M5 3 L21 12 L5 21 Z"/></svg>
+  </button>
+  <button class="tb-btn" id="btn-locate" title="Zur aktuellen Position" aria-label="Zur aktuellen Position">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/>
+      <path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke-linecap="round"/>
+    </svg>
+  </button>
+</div>
 <div class="panel" id="panel" style="display:none">
-  <button class="close" id="panel-close" title="Info ausblenden"
-          aria-label="Info ausblenden">&times;</button>
   <div class="status" id="status"></div>
   <h2 id="name"></h2>
   <div class="meta" id="meta"></div>
@@ -396,6 +420,7 @@
     const props = manifest.properties;
     if (!panelAvailable) {
       panelAvailable = true;
+      document.getElementById('topbar').style.display = 'flex';
       setPanelOpen(panelDefault(), false);
     }
     document.getElementById('name').textContent = props.name || 'Unbenannter Törn';
@@ -505,13 +530,16 @@
       layers.push(m);
     }
     if (lastPoint) {
-      const label = status === 'active' ? 'Aktuelle Position' : 'Ende';
-      const color = status === 'active' ? '#c72a2a' : '#5a6876';
-      const m = L.circleMarker(lastPoint, {
-        radius: 7, color: color, fillColor: color, fillOpacity: 1
-      }).bindTooltip(label).addTo(map);
-      layers.push(m);
+      // Bei aktiven Törns markiert das grüne Dreieck die letzte hochgeladene
+      // Position; der graue Kreis bleibt den beendeten Törns vorbehalten.
+      if (status !== 'active') {
+        const m = L.circleMarker(lastPoint, {
+          radius: 7, color: '#5a6876', fillColor: '#5a6876', fillOpacity: 1
+        }).bindTooltip('Ende').addTo(map);
+        layers.push(m);
+      }
     }
+    updateLiveMarker(lastPoint, status);
 
     if (allBounds.length > 0) {
       const bounds = L.latLngBounds(allBounds);
@@ -571,6 +599,7 @@
     lat: [], lon: [], t: [], seg: [], cum: [],   // flache Arrays über alle Segmente
     n: 0,
     index: 0,          // Fließkomma-Position im Track
+    enabled: false,    // Leiste + Playback-Schiff sichtbar?
     playing: false,
     follow: false,
     pps: 200,          // Punkte pro Sekunde
@@ -616,15 +645,19 @@
     pb.n = lat.length;
 
     if (pb.n < 2) {
+      document.getElementById('btn-play').disabled = true;
       hidePlaybar();
       return;
     }
 
     el.slider.max = String(pb.n - 1);
     if (pb.index > pb.n - 1) pb.index = pb.n - 1;
-    showPlaybar();
-    ensureBoat();
-    updateBoat();
+    document.getElementById('btn-play').disabled = false;
+    if (pb.enabled) {
+      showPlaybar();
+      ensureBoat();
+      updateBoat();
+    }
   }
 
   /**
@@ -653,44 +686,162 @@
     if (pb.marker) { map.removeLayer(pb.marker); pb.marker = null; }
   }
 
-  function boatSvg(color) {
-    return `<div class="rot"><svg viewBox="0 0 24 24" width="26" height="26">
-      <path d="M12 1.5 C15.4 6 16.6 12.5 16 20.5 L8 20.5 C7.4 12.5 8.6 6 12 1.5 Z"
-            fill="${color}" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M12 5 L12 18" stroke="#ffffff" stroke-width="1.1" opacity="0.85"/>
+  /** Play-Button oben: klappt Leiste UND Playback-Schiff gemeinsam ein/aus. */
+  function setPlaybackEnabled(on) {
+    pb.enabled = on;
+    document.getElementById('btn-play').classList.toggle('on', on);
+    if (on && pb.n >= 2) {
+      showPlaybar();
+      ensureBoat();
+      updateBoat();
+    } else {
+      hidePlaybar();
+    }
+  }
+
+  document.getElementById('btn-play').addEventListener('click', () => {
+    setPlaybackEnabled(!pb.enabled);
+  });
+
+  /**
+   * Klassisches Navigationsdreieck (wie in Kartenapps üblich). Die dünne weiße
+   * Kontur bleibt drin, weil ein flaches Dreieck auf dem Satellitenbild sonst
+   * kaum noch zu sehen ist.
+   */
+  function triangleSvg(color, size) {
+    return `<div class="rot"><svg viewBox="0 0 24 24" width="${size}" height="${size}">
+      <path d="M12 2 L20.5 21 L12 16.4 L3.5 21 Z"
+            fill="${color}" stroke="#ffffff" stroke-width="1.5"
+            stroke-linejoin="round"/>
     </svg></div>`;
   }
+
+  function boatSvg(color) { return triangleSvg(color, 24); }
 
   function ensureBoat() {
     if (pb.marker) return;
     pb.marker = L.marker([pb.lat[0], pb.lon[0]], {
       icon: L.divIcon({
-        className: 'boat-icon',
-        html: boatSvg(pb.color),
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
+        className: 'boat-icon', html: boatSvg(pb.color),
+        iconSize: [24, 24], iconAnchor: [12, 12],
       }),
-      interactive: false,
-      keyboard: false,
-      zIndexOffset: 1000,
+      interactive: false, keyboard: false, zIndexOffset: 1000,
     }).addTo(map);
   }
+
+  // --- Live-Marker (nur bei aktiven Törns) -----------------------------------
+
+  const live = { marker: null, at: null, active: false, infoOn: true };
+
+  function liveColor() {
+    // Auf dem Satellitenbild braucht das Grün deutlich mehr Leuchtkraft.
+    return POLYLINE_COLOR === '#ffcc00' ? '#2fd968' : '#1a9e4a';
+  }
+
+  function updateLiveMarker(lastPoint, status) {
+    live.active = (status === 'active') && !!lastPoint && pb.n > 0;
+    if (!live.active) {
+      if (live.marker) { map.removeLayer(live.marker); live.marker = null; }
+      document.getElementById('btn-locate').disabled = !lastPoint;
+      live.at = lastPoint || null;
+      return;
+    }
+    live.at = lastPoint;
+    document.getElementById('btn-locate').disabled = false;
+
+    if (!live.marker) {
+      live.marker = L.marker(lastPoint, {
+        icon: L.divIcon({
+          className: 'boat-icon', html: triangleSvg(liveColor(), 26),
+          iconSize: [26, 26], iconAnchor: [13, 13],
+        }),
+        zIndexOffset: 1100, keyboard: false,
+      }).addTo(map);
+      // Antippen des Schiffs holt die Infobox zurück.
+      live.marker.on('click', () => setLiveInfo(true));
+    } else {
+      live.marker.setLatLng(lastPoint);
+    }
+
+    applyLiveRotation();
+    refreshLiveTooltip();
+  }
+
+  function applyLiveRotation() {
+    if (!live.marker) return;
+    const brg = bearingAt(pb.n - 1);
+    const rot = live.marker.getElement() &&
+                live.marker.getElement().querySelector('.rot');
+    if (rot && brg != null) rot.style.transform = `rotate(${brg.toFixed(1)}deg)`;
+  }
+
+  function refreshLiveTooltip() {
+    if (!live.marker) return;
+    const sog = sogAt(pb.n - 1);
+    const ago = formatRelativeTime(pb.t[pb.n - 1]);
+    const html =
+      `<div class="sogline">${sog == null ? '–' : sog.toFixed(1)} kn</div>` +
+      (ago ? `<div class="agoline">${ago}</div>` : '');
+    if (live.marker.getTooltip()) {
+      live.marker.setTooltipContent(html);
+    } else {
+      live.marker.bindTooltip(html, {
+        // 'auto' klappt den Kasten am rechten Kartenrand nach links um,
+        // sonst wird er dort abgeschnitten.
+        permanent: true, direction: 'auto', offset: [0, 0],
+        className: 'live-tip', interactive: false,
+      });
+    }
+    setLiveInfo(live.infoOn);
+  }
+
+  function setLiveInfo(on) {
+    live.infoOn = on;
+    if (!live.marker || !live.marker.getTooltip()) return;
+    if (on) live.marker.openTooltip(); else live.marker.closeTooltip();
+  }
+
+  // Jede echte Nutzereingabe blendet die Infobox aus. Bewusst NICHT an Leaflets
+  // movestart gehängt: das automatische fitBounds beim Laden würde sie sonst
+  // sofort wieder wegräumen.
+  ['pointerdown', 'wheel', 'keydown'].forEach((ev) => {
+    document.addEventListener(ev, (e) => {
+      if (e.target && e.target.closest && e.target.closest('#btn-locate')) return;
+      if (live.infoOn) setLiveInfo(false);
+    }, { passive: true, capture: true });
+  });
+
+  document.getElementById('btn-locate').addEventListener('click', () => {
+    const target = live.at;
+    if (!target) return;
+    map.setView(target, Math.max(map.getZoom(), 14), { animate: true });
+    if (live.active) setLiveInfo(true);
+  });
 
   function applyBoatColor() {
     // Auf der Esri-Seekarte ist der Track selbst rot – dann muss das Boot weg
     // vom Rot, sonst verschwindet es auf der eigenen Linie.
     pb.color = (POLYLINE_COLOR === '#d6392a') ? '#1a2733' : '#c72a2a';
-    if (!pb.marker) return;
-    const rot = pb.marker.getElement() &&
-                pb.marker.getElement().querySelector('.rot');
-    const angle = rot ? rot.style.transform : '';
-    pb.marker.setIcon(L.divIcon({
-      className: 'boat-icon', html: boatSvg(pb.color),
-      iconSize: [26, 26], iconAnchor: [13, 13],
-    }));
-    const rot2 = pb.marker.getElement() &&
-                 pb.marker.getElement().querySelector('.rot');
-    if (rot2 && angle) rot2.style.transform = angle;
+    if (pb.marker) {
+      const rot = pb.marker.getElement() &&
+                  pb.marker.getElement().querySelector('.rot');
+      const angle = rot ? rot.style.transform : '';
+      pb.marker.setIcon(L.divIcon({
+        className: 'boat-icon', html: boatSvg(pb.color),
+        iconSize: [24, 24], iconAnchor: [12, 12],
+      }));
+      const rot2 = pb.marker.getElement() &&
+                   pb.marker.getElement().querySelector('.rot');
+      if (rot2 && angle) rot2.style.transform = angle;
+    }
+    if (live.marker) {
+      live.marker.setIcon(L.divIcon({
+        className: 'boat-icon', html: triangleSvg(liveColor(), 26),
+        iconSize: [26, 26], iconAnchor: [13, 13],
+      }));
+      applyLiveRotation();
+      setLiveInfo(live.infoOn);
+    }
   }
 
   /** Kurs über einem Fenster, damit das Boot im Hafen nicht zappelt. */
@@ -846,29 +997,28 @@
 
   // --- Info-Panel -----------------------------------------------------------
 
-  const PANEL_KEY = 'sailtrack.panelOpen';
+  // Neuer Key: der alte Wert konnte auf "zu" stehen und würde den geänderten
+  // Default (überall offen) sonst dauerhaft überstimmen.
+  const PANEL_KEY = 'sailtrack.panelOpen2';
   let panelAvailable = false;
 
   function panelDefault() {
-    const stored = localStorage.getItem(PANEL_KEY);
-    if (stored === '1') return true;
-    if (stored === '0') return false;
-    return window.innerWidth >= 768;
+    return localStorage.getItem(PANEL_KEY) !== '0';
   }
 
   function setPanelOpen(open, persist) {
     if (!panelAvailable) return;
     document.getElementById('panel').style.display = open ? 'block' : 'none';
-    document.getElementById('info-btn').style.display = open ? 'none' : 'flex';
+    document.getElementById('btn-info').classList.toggle('on', open);
     if (persist) {
       try { localStorage.setItem(PANEL_KEY, open ? '1' : '0'); } catch (e) {}
     }
   }
 
-  document.getElementById('info-btn')
-    .addEventListener('click', () => setPanelOpen(true, true));
-  document.getElementById('panel-close')
-    .addEventListener('click', () => setPanelOpen(false, true));
+  document.getElementById('btn-info').addEventListener('click', () => {
+    const open = document.getElementById('panel').style.display !== 'block';
+    setPanelOpen(open, true);
+  });
 
   // --- Display-Glättung -----------------------------------------------------
 
