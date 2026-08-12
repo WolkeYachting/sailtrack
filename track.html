@@ -126,9 +126,10 @@
   }
   .playbar .sog {
     flex: 0 0 auto; font-variant-numeric: tabular-nums;
-    width: 3.6rem; text-align: right; font-weight: 600;
-    /* Feste Breite: die Zahl erscheint nur im Pausenzustand, der Platz bleibt
-       aber reserviert, damit rechts nichts springt. */
+    width: 3.5rem; text-align: left; font-weight: 600;
+    /* Linksbündig, damit die Zahl direkt an "Folgen" anschließt. Feste Breite:
+       die Zahl erscheint nur im Pausenzustand, der Platz bleibt aber
+       reserviert, damit rechts nichts springt. */
     visibility: hidden;
   }
   .playbar .sog.visible { visibility: visible; }
@@ -143,21 +144,30 @@
     height: 2.2rem; padding-top: 0.5rem;
   }
   .playbar .gauge .track {
-    position: relative; height: 3px; border-radius: 2px; background: #dde6ee;
+    position: relative; height: 5px; border-radius: 3px; background: #dde6ee;
     overflow: hidden;
   }
   .playbar .gauge .fill {
     position: absolute; left: 0; top: 0; bottom: 0; width: 0;
-    background: #9fc0dd; border-radius: 2px;
+    background: #9fc0dd; border-radius: 3px;
   }
+  /* Ticks sitzen UNTER dem Balken auf dem weißen Grund der Leiste. Im Balken
+     selbst waren sie als weiße Striche auf hellblau praktisch unsichtbar. */
+  .playbar .gauge .ticks { position: relative; height: 5px; }
+  .playbar .gauge .ticks i {
+    position: absolute; top: 1px; width: 1px; margin-left: -0.5px;
+    background: #aab8c6;
+  }
+  .playbar .gauge .ticks i.minor { height: 3px; }
+  .playbar .gauge .ticks i.major { height: 5px; background: #7a8896; }
   .playbar .gauge .needle {
-    position: absolute; top: 0.24rem; left: 0;
-    width: 2px; height: 0.85rem; margin-left: -1px;
-    background: #1a2733;
+    position: absolute; top: 0.34rem; left: 0;
+    width: 2px; height: 0.8rem; margin-left: -1px;
+    background: #1a2733; border-radius: 1px;
   }
   .playbar .gauge .scale {
     display: flex; justify-content: space-between;
-    font-size: 0.62rem; color: #97a4b1; margin-top: 0.2rem;
+    font-size: 0.62rem; color: #97a4b1; margin-top: 0.1rem;
     font-variant-numeric: tabular-nums; line-height: 1;
   }
   .playbar .gauge .cap {
@@ -186,12 +196,24 @@
 
   @media (max-width: 600px) {
     .panel { max-width: calc(100vw - 2rem); }
-    .playbar { flex-wrap: wrap; gap: 0.5rem 0.6rem; }
-    .playbar input[type=range] { order: 5; flex-basis: 100%; }
-    .playbar .gauge { order: 6; flex-basis: 100%; }
-    /* Playbar bricht hier auf drei Zeilen um und wird entsprechend höher. */
-    body.pb-on .leaflet-bottom.leaflet-right,
-    body.pb-on .leaflet-bottom.leaflet-left { margin-bottom: 8.2rem; }
+    /* Testweise auch hier einzeilig. Dafür müssen Abstände, Schriftgrößen und
+       Mindestbreiten deutlich schrumpfen – bei ~360 px nutzbarer Breite teilen
+       sich sechs Elemente den Platz. */
+    .playbar { gap: 0.35rem; padding: 0.5rem 0.5rem; }
+    .playbar button.pb-icon { width: 1.9rem; height: 1.9rem; font-size: 0.8rem; }
+    .playbar select { padding: 0.25rem 0.1rem; font-size: 0.7rem; }
+    .playbar .toggle { padding: 0.3rem 0.3rem; font-size: 0.7rem; }
+    .playbar .sog { width: 2.9rem; font-size: 0.75rem; }
+    .playbar input[type=range] { min-width: 46px; }
+    .playbar .gauge { flex: 0 1 96px; min-width: 72px; }
+    .playbar .gauge .scale { font-size: 0.55rem; }
+  }
+  /* Sehr schmale Geräte (iPhone SE u. ä.): sonst läuft die Leiste über. */
+  @media (max-width: 360px) {
+    .playbar { gap: 0.25rem; padding: 0.5rem 0.35rem; }
+    .playbar .sog { width: 2.6rem; font-size: 0.7rem; }
+    .playbar input[type=range] { min-width: 32px; }
+    .playbar .gauge { flex: 0 1 76px; min-width: 60px; }
   }
 </style>
 </head>
@@ -247,7 +269,10 @@
   <div class="sog" id="pb-sog-box"><span id="pb-sog">–</span><span class="unit">kn</span></div>
   <input type="range" id="pb-slider" min="0" max="0" value="0" step="1" aria-label="Position im Törn">
   <div class="gauge" id="pb-gauge" aria-hidden="true">
-    <div class="track"><div class="fill" id="pb-gauge-fill"></div></div>
+    <div class="track">
+      <div class="fill" id="pb-gauge-fill"></div>
+    </div>
+    <div class="ticks" id="pb-gauge-ticks"></div>
     <div class="needle" id="pb-gauge-needle"></div>
     <div class="scale"><span>0</span><span><span id="pb-gauge-max">–</span> kn</span></div>
   </div>
@@ -740,6 +765,29 @@
     }
     pb.gaugeMax = m;
     document.getElementById('pb-gauge-max').textContent = String(m);
+    renderGaugeTicks(m);
+  }
+
+  /**
+   * Ein Tick je ganzem Knoten. Wird die Teilung zu eng, fällt sie automatisch
+   * auf jeden 2. bzw. 5. Knoten zurück – bei einer Skala bis 25 kn lägen die
+   * Striche sonst 6 px auseinander und ergäben nur noch eine graue Fläche.
+   */
+  function renderGaugeTicks(max) {
+    const box = document.getElementById('pb-gauge-ticks');
+    const w = document.getElementById('pb-gauge').clientWidth || 150;
+    const MIN_PX = 9;
+    let stepKn = 1;
+    for (const s of [1, 2, 5, 10]) {
+      stepKn = s;
+      if ((w / max) * s >= MIN_PX) break;
+    }
+    let html = '';
+    for (let kn = stepKn; kn < max; kn += stepKn) {
+      const cls = (kn % (stepKn * 5) === 0) ? 'major' : 'minor';
+      html += `<i class="${cls}" style="left:${(kn / max) * 100}%"></i>`;
+    }
+    box.innerHTML = html;
   }
 
   /**
@@ -774,12 +822,24 @@
     document.getElementById('btn-play').classList.toggle('on', on);
     if (on && pb.n >= 2) {
       showPlaybar();
+      // Erst jetzt hat der Zahlenstrahl eine messbare Breite – die Teilung
+      // hängt davon ab.
+      renderGaugeTicks(pb.gaugeMax);
       ensureBoat();
       updateBoat();
     } else {
       hidePlaybar();
     }
   }
+
+  // Drehen des Geräts ändert die Strahlbreite und damit die sinnvolle Teilung.
+  let gaugeResizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(gaugeResizeTimer);
+    gaugeResizeTimer = setTimeout(() => {
+      if (pb.enabled) renderGaugeTicks(pb.gaugeMax);
+    }, 150);
+  });
 
   document.getElementById('btn-play').addEventListener('click', () => {
     setPlaybackEnabled(!pb.enabled);
