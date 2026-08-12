@@ -196,24 +196,26 @@
 
   @media (max-width: 600px) {
     .panel { max-width: calc(100vw - 2rem); }
-    /* Testweise auch hier einzeilig. Dafür müssen Abstände, Schriftgrößen und
-       Mindestbreiten deutlich schrumpfen – bei ~360 px nutzbarer Breite teilen
-       sich sechs Elemente den Platz. */
-    .playbar { gap: 0.35rem; padding: 0.5rem 0.5rem; }
+    /* Zeile 1: Play, Tempo, Folgen, SOG-Zahl, Zahlenstrahl.
+       Zeile 2: Positions-Slider über die volle Breite – der braucht auf dem
+       Handy die ganze Breite, um bei zehntausenden Punkten bedienbar zu sein. */
+    .playbar { flex-wrap: wrap; gap: 0.35rem; padding: 0.5rem 0.6rem; }
     .playbar button.pb-icon { width: 1.9rem; height: 1.9rem; font-size: 0.8rem; }
-    .playbar select { padding: 0.25rem 0.1rem; font-size: 0.7rem; }
-    .playbar .toggle { padding: 0.3rem 0.3rem; font-size: 0.7rem; }
-    .playbar .sog { width: 2.9rem; font-size: 0.75rem; }
-    .playbar input[type=range] { min-width: 46px; }
-    .playbar .gauge { flex: 0 1 96px; min-width: 72px; }
-    .playbar .gauge .scale { font-size: 0.55rem; }
+    .playbar select { padding: 0.25rem 0.1rem; font-size: 0.72rem; }
+    .playbar .toggle { padding: 0.3rem 0.35rem; font-size: 0.72rem; }
+    .playbar .sog { width: 3.1rem; font-size: 0.78rem; }
+    .playbar .gauge { flex: 1 1 auto; min-width: 84px; }
+    .playbar .gauge .scale { font-size: 0.58rem; }
+    .playbar input[type=range] { order: 5; flex-basis: 100%; min-width: 0; }
+    /* Playbar ist hier zweizeilig und entsprechend höher. */
+    body.pb-on .leaflet-bottom.leaflet-right,
+    body.pb-on .leaflet-bottom.leaflet-left { margin-bottom: 5.4rem; }
   }
-  /* Sehr schmale Geräte (iPhone SE u. ä.): sonst läuft die Leiste über. */
+  /* Sehr schmale Geräte (iPhone SE u. ä.). */
   @media (max-width: 360px) {
-    .playbar { gap: 0.25rem; padding: 0.5rem 0.35rem; }
-    .playbar .sog { width: 2.6rem; font-size: 0.7rem; }
-    .playbar input[type=range] { min-width: 32px; }
-    .playbar .gauge { flex: 0 1 76px; min-width: 60px; }
+    .playbar { gap: 0.25rem; padding: 0.5rem 0.4rem; }
+    .playbar .sog { width: 2.8rem; font-size: 0.72rem; }
+    .playbar .gauge { min-width: 68px; }
   }
 </style>
 </head>
