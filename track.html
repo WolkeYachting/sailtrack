@@ -127,12 +127,9 @@
   .playbar .sog {
     flex: 0 0 auto; font-variant-numeric: tabular-nums;
     width: 3.5rem; text-align: left; font-weight: 600;
-    /* Linksbündig, damit die Zahl direkt an "Folgen" anschließt. Feste Breite:
-       die Zahl erscheint nur im Pausenzustand, der Platz bleibt aber
-       reserviert, damit rechts nichts springt. */
-    visibility: hidden;
+    /* Linksbündig, damit die Zahl direkt an "Folgen" anschließt. Feste Breite
+       mit tabellarischen Ziffern: so springt nichts, wenn die Zahl wechselt. */
   }
-  .playbar .sog.visible { visibility: visible; }
   .playbar .sog .unit { font-weight: 400; color: #5a6876; margin-left: 0.15rem; }
 
   /* --- Zahlenstrahl für SOG ------------------------------------------------
@@ -166,10 +163,16 @@
     background: #1a2733; border-radius: 1px;
   }
   .playbar .gauge .scale {
-    display: flex; justify-content: space-between;
-    font-size: 0.62rem; color: #97a4b1; margin-top: 0.1rem;
+    position: relative; height: 0.75rem; margin-top: 0.1rem;
+    font-size: 0.62rem; color: #97a4b1;
     font-variant-numeric: tabular-nums; line-height: 1;
   }
+  .playbar .gauge .scale span {
+    position: absolute; top: 0; white-space: nowrap;
+    transform: translateX(-50%);
+  }
+  .playbar .gauge .scale span.first { left: 0; transform: none; }
+  .playbar .gauge .scale span.last { right: 0; left: auto; transform: none; }
   .playbar .gauge .cap {
     position: absolute; right: 0; top: 0.5rem;
     font-size: 0.62rem; color: #97a4b1;
@@ -276,7 +279,7 @@
     </div>
     <div class="ticks" id="pb-gauge-ticks"></div>
     <div class="needle" id="pb-gauge-needle"></div>
-    <div class="scale"><span>0</span><span><span id="pb-gauge-max">–</span> kn</span></div>
+    <div class="scale" id="pb-gauge-scale"></div>
   </div>
 </div>
 
@@ -747,10 +750,11 @@
   }
 
   /**
-   * Skalenende des Zahlenstrahls: 99. Perzentil der SOG-Werte, aufgerundet.
-   * Bewusst nicht das Maximum — ein einzelner GPS-Ausreißer beim Ablegen würde
-   * die Skala sonst auf 20+ kn strecken, während der Törn zwischen 4 und 7 kn
-   * stattfand, und der Zeiger klebte dauerhaft im linken Viertel.
+   * Skalenende des Zahlenstrahls: 99. Perzentil der SOG-Werte, aufgerundet auf
+   * die nächste gerade Zahl. Bewusst nicht das Maximum — ein einzelner
+   * GPS-Ausreißer beim Ablegen würde die Skala sonst auf 20+ kn strecken,
+   * während der Törn zwischen 4 und 7 kn stattfand, und der Zeiger klebte
+   * dauerhaft im linken Viertel.
    */
   function computeGaugeMax() {
     const vals = [];
@@ -763,10 +767,9 @@
     if (vals.length > 0) {
       vals.sort((a, b) => a - b);
       const p99 = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.99))];
-      m = Math.max(6, Math.ceil(p99));
+      m = Math.max(6, Math.ceil(p99 / 2) * 2);
     }
     pb.gaugeMax = m;
-    document.getElementById('pb-gauge-max').textContent = String(m);
     renderGaugeTicks(m);
   }
 
@@ -774,9 +777,12 @@
    * Ein Tick je ganzem Knoten. Wird die Teilung zu eng, fällt sie automatisch
    * auf jeden 2. bzw. 5. Knoten zurück – bei einer Skala bis 25 kn lägen die
    * Striche sonst 6 px auseinander und ergäben nur noch eine graue Fläche.
+   *
+   * Beschriftet werden 0, das Skalenende und die betonten Zwischenticks.
    */
   function renderGaugeTicks(max) {
     const box = document.getElementById('pb-gauge-ticks');
+    const scale = document.getElementById('pb-gauge-scale');
     const w = document.getElementById('pb-gauge').clientWidth || 150;
     const MIN_PX = 9;
     let stepKn = 1;
@@ -784,12 +790,46 @@
       stepKn = s;
       if ((w / max) * s >= MIN_PX) break;
     }
-    let html = '';
+    const majorEvery = stepKn * 5;
+
+    let ticks = '';
+    let labels = '<span class="first">0 kn</span>';
+
     for (let kn = stepKn; kn < max; kn += stepKn) {
-      const cls = (kn % (stepKn * 5) === 0) ? 'major' : 'minor';
-      html += `<i class="${cls}" style="left:${(kn / max) * 100}%"></i>`;
+      const pct = (kn / max) * 100;
+      const isMajor = (kn % majorEvery === 0);
+      ticks += `<i class="${isMajor ? 'major' : 'minor'}" style="left:${pct}%"></i>`;
+      if (isMajor) labels += `<span style="left:${pct}%">${kn} kn</span>`;
     }
-    box.innerHTML = html;
+    labels += `<span class="last">${max} kn</span>`;
+
+    box.innerHTML = ticks;
+    scale.innerHTML = labels;
+    pruneScaleLabels(scale);
+  }
+
+  /**
+   * Überlappende Zwischenbeschriftungen entfernen. Bewusst gemessen statt
+   * geschätzt: die Labelbreite hängt von Schriftgröße und Stellenzahl ab, und
+   * das rechte Label ist rechtsbündig, ragt also weiter nach links als eine
+   * Abstandsformel vermuten lässt. 0 und Skalenende bleiben immer stehen.
+   */
+  function pruneScaleLabels(scale) {
+    const spans = [...scale.querySelectorAll('span')];
+    if (spans.length < 3) return;
+    const GAP = 4;
+    const last = spans[spans.length - 1];
+    let prevRight = spans[0].getBoundingClientRect().right;
+    const lastLeft = last.getBoundingClientRect().left;
+
+    for (let i = 1; i < spans.length - 1; i++) {
+      const r = spans[i].getBoundingClientRect();
+      if (r.left < prevRight + GAP || r.right > lastLeft - GAP) {
+        spans[i].remove();
+      } else {
+        prevRight = r.right;
+      }
+    }
   }
 
   /**
@@ -1105,7 +1145,6 @@
     el.gaugeNeedle.style.display = v == null ? 'none' : 'block';
 
     el.sog.textContent = v == null ? '–' : v.toFixed(1);
-    el.sogBox.classList.toggle('visible', !pb.playing);
   }
 
   /**
