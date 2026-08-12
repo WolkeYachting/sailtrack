@@ -126,9 +126,44 @@
   }
   .playbar .sog {
     flex: 0 0 auto; font-variant-numeric: tabular-nums;
-    min-width: 4.4rem; text-align: right; font-weight: 600;
+    width: 3.6rem; text-align: right; font-weight: 600;
+    /* Feste Breite: die Zahl erscheint nur im Pausenzustand, der Platz bleibt
+       aber reserviert, damit rechts nichts springt. */
+    visibility: hidden;
   }
+  .playbar .sog.visible { visibility: visible; }
   .playbar .sog .unit { font-weight: 400; color: #5a6876; margin-left: 0.15rem; }
+
+  /* --- Zahlenstrahl für SOG ------------------------------------------------
+     Bewusst anders gestaltet als der Positions-Slider daneben: dünner, grau
+     hinterlegt, ohne runden Griff. Sonst sähen Anzeige und Bedienelement
+     gleich aus und man würde daran ziehen wollen. */
+  .playbar .gauge {
+    flex: 0 1 150px; min-width: 92px; position: relative;
+    height: 2.2rem; padding-top: 0.5rem;
+  }
+  .playbar .gauge .track {
+    position: relative; height: 3px; border-radius: 2px; background: #dde6ee;
+    overflow: hidden;
+  }
+  .playbar .gauge .fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: #9fc0dd; border-radius: 2px;
+  }
+  .playbar .gauge .needle {
+    position: absolute; top: 0.24rem; left: 0;
+    width: 2px; height: 0.85rem; margin-left: -1px;
+    background: #1a2733;
+  }
+  .playbar .gauge .scale {
+    display: flex; justify-content: space-between;
+    font-size: 0.62rem; color: #97a4b1; margin-top: 0.2rem;
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .playbar .gauge .cap {
+    position: absolute; right: 0; top: 0.5rem;
+    font-size: 0.62rem; color: #97a4b1;
+  }
   .playbar select {
     flex: 0 0 auto; border: 1px solid #d0dce6; border-radius: 6px;
     padding: 0.3rem 0.35rem; font-size: 0.8rem; background: #fff; cursor: pointer;
@@ -153,9 +188,10 @@
     .panel { max-width: calc(100vw - 2rem); }
     .playbar { flex-wrap: wrap; gap: 0.5rem 0.6rem; }
     .playbar input[type=range] { order: 5; flex-basis: 100%; }
-    /* Playbar bricht hier auf zwei Zeilen um und wird entsprechend höher. */
+    .playbar .gauge { order: 6; flex-basis: 100%; }
+    /* Playbar bricht hier auf drei Zeilen um und wird entsprechend höher. */
     body.pb-on .leaflet-bottom.leaflet-right,
-    body.pb-on .leaflet-bottom.leaflet-left { margin-bottom: 5.6rem; }
+    body.pb-on .leaflet-bottom.leaflet-left { margin-bottom: 8.2rem; }
   }
 </style>
 </head>
@@ -200,8 +236,6 @@
 
 <div class="playbar" id="playbar" style="display:none">
   <button class="pb-icon" id="pb-play" title="Abspielen" aria-label="Abspielen">&#9654;</button>
-  <input type="range" id="pb-slider" min="0" max="0" value="0" step="1" aria-label="Position im Törn">
-  <div class="sog"><span id="pb-sog">–</span><span class="unit">kn</span></div>
   <select id="pb-speed" aria-label="Abspielgeschwindigkeit">
     <option value="100">100×</option>
     <option value="500" selected>500×</option>
@@ -210,6 +244,13 @@
     <option value="10000">10.000×</option>
   </select>
   <button class="toggle" id="pb-follow" title="Karte folgt dem Boot">Folgen</button>
+  <div class="sog" id="pb-sog-box"><span id="pb-sog">–</span><span class="unit">kn</span></div>
+  <input type="range" id="pb-slider" min="0" max="0" value="0" step="1" aria-label="Position im Törn">
+  <div class="gauge" id="pb-gauge" aria-hidden="true">
+    <div class="track"><div class="fill" id="pb-gauge-fill"></div></div>
+    <div class="needle" id="pb-gauge-needle"></div>
+    <div class="scale"><span>0</span><span><span id="pb-gauge-max">–</span> kn</span></div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -614,13 +655,23 @@
     lastFrame: null,
     marker: null,
     color: '#c72a2a',
+    gaugeMax: 6,       // Skalenende in kn (99. Perzentil des Törns)
+    sogShown: null,    // gedämpfter Anzeigewert
+    frameSpanS: 0,     // Törnzeit, die pro Frame durchläuft
   };
+
+  // Zeitkonstante der Anzeige-Dämpfung in echten Sekunden. Bewusst nicht in
+  // Frames: so fühlt sich das Nachlaufen bei jedem Zeitraffer gleich an.
+  const SOG_DISPLAY_TAU_S = 0.5;
 
   const el = {
     playbar: document.getElementById('playbar'),
     play: document.getElementById('pb-play'),
     slider: document.getElementById('pb-slider'),
     sog: document.getElementById('pb-sog'),
+    sogBox: document.getElementById('pb-sog-box'),
+    gaugeFill: document.getElementById('pb-gauge-fill'),
+    gaugeNeedle: document.getElementById('pb-gauge-needle'),
     speed: document.getElementById('pb-speed'),
     follow: document.getElementById('pb-follow'),
   };
@@ -660,11 +711,35 @@
     el.slider.max = String(pb.n - 1);
     if (pb.index > pb.n - 1) pb.index = pb.n - 1;
     document.getElementById('btn-play').disabled = false;
+    computeGaugeMax();
     if (pb.enabled) {
       showPlaybar();
       ensureBoat();
       updateBoat();
     }
+  }
+
+  /**
+   * Skalenende des Zahlenstrahls: 99. Perzentil der SOG-Werte, aufgerundet.
+   * Bewusst nicht das Maximum — ein einzelner GPS-Ausreißer beim Ablegen würde
+   * die Skala sonst auf 20+ kn strecken, während der Törn zwischen 4 und 7 kn
+   * stattfand, und der Zeiger klebte dauerhaft im linken Viertel.
+   */
+  function computeGaugeMax() {
+    const vals = [];
+    const step = Math.max(1, Math.floor(pb.n / 2000));   // Stichprobe reicht
+    for (let i = 0; i < pb.n; i += step) {
+      const v = sogAt(i);
+      if (v != null && isFinite(v)) vals.push(v);
+    }
+    let m = 6;
+    if (vals.length > 0) {
+      vals.sort((a, b) => a - b);
+      const p99 = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.99))];
+      m = Math.max(6, Math.ceil(p99));
+    }
+    pb.gaugeMax = m;
+    document.getElementById('pb-gauge-max').textContent = String(m);
   }
 
   /**
@@ -889,23 +964,32 @@
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
 
-  /** SOG aus der zurückgelegten Strecke im Zeitfenster, nie über Segmentgrenzen. */
-  function sogAt(i) {
+  /**
+   * SOG aus der zurückgelegten Strecke im Zeitfenster, nie über Segmentgrenzen.
+   *
+   * Das Fenster ist mindestens SOG_WINDOW_S lang, wächst aber mit dem
+   * Zeitraffer mit: Bei 10.000× zieht pro Frame gut eine Törnminute vorbei, ein
+   * festes 30-s-Fenster würde dann zwei benachbarte Frames in völlig getrennten
+   * Zeitbereichen messen — das Ergebnis wäre eine zufällige Stichprobe statt
+   * eines Mittelwerts, und genau daher kam das Zappeln der Anzeige.
+   */
+  function sogAt(i, windowS) {
     if (pb.t[i] == null) return null;
+    const win = Math.max(SOG_WINDOW_S, windowS || 0);
     const segId = pb.seg[i];
     let j = i;
     while (j > 0 && pb.seg[j - 1] === segId && pb.t[j - 1] != null &&
-           (pb.t[i] - pb.t[j]) < SOG_WINDOW_S) {
+           (pb.t[i] - pb.t[j]) < win) {
       j--;
-      if (i - j > 2000) break;
+      if (i - j > 20000) break;
     }
     // Am Segmentanfang nach vorne schauen statt nichts anzuzeigen.
     if (j === i) {
       let k = i;
       while (k < pb.n - 1 && pb.seg[k + 1] === segId && pb.t[k + 1] != null &&
-             (pb.t[k] - pb.t[i]) < SOG_WINDOW_S) {
+             (pb.t[k] - pb.t[i]) < win) {
         k++;
-        if (k - i > 2000) break;
+        if (k - i > 20000) break;
       }
       if (k === i) return null;
       const dt = pb.t[k] - pb.t[i];
@@ -917,7 +1001,7 @@
     return ((pb.cum[i] - pb.cum[j]) * 3600) / dt;
   }
 
-  function updateBoat() {
+  function updateBoat(dtReal) {
     if (pb.n < 2 || !pb.marker) return;
     const i = Math.min(pb.n - 1, Math.max(0, Math.round(pb.index)));
     const ll = [pb.lat[i], pb.lon[i]];
@@ -928,12 +1012,38 @@
                 pb.marker.getElement().querySelector('.rot');
     if (rot && brg != null) rot.style.transform = `rotate(${brg.toFixed(1)}deg)`;
 
-    const sog = sogAt(i);
-    el.sog.textContent = sog == null ? '–' : sog.toFixed(1);
+    updateSogDisplay(i, dtReal);
 
     if (document.activeElement !== el.slider) el.slider.value = String(i);
 
     if (pb.follow) keepInView(ll);
+  }
+
+  /**
+   * Während der Wiedergabe: gedämpfter Zeiger, keine Zahl.
+   * Im Pausenzustand (auch beim Ziehen am Slider): exakter Wert des aktuellen
+   * Punkts, ungedämpft, mit Zahl.
+   */
+  function updateSogDisplay(i, dtReal) {
+    const raw = pb.playing ? sogAt(i, pb.frameSpanS) : sogAt(i);
+
+    if (!pb.playing || pb.sogShown == null || dtReal == null) {
+      pb.sogShown = raw;
+    } else if (raw != null) {
+      // Zeitkorrekte EMA: unabhängig von der Framerate.
+      const a = 1 - Math.exp(-dtReal / SOG_DISPLAY_TAU_S);
+      pb.sogShown += a * (raw - pb.sogShown);
+    }
+
+    const v = pb.sogShown;
+    const pct = v == null ? 0
+      : Math.max(0, Math.min(100, (v / pb.gaugeMax) * 100));
+    el.gaugeFill.style.width = pct + '%';
+    el.gaugeNeedle.style.left = pct + '%';
+    el.gaugeNeedle.style.display = v == null ? 'none' : 'block';
+
+    el.sog.textContent = v == null ? '–' : v.toFixed(1);
+    el.sogBox.classList.toggle('visible', !pb.playing);
   }
 
   /**
@@ -964,25 +1074,34 @@
     } else {
       if (pb.raf) cancelAnimationFrame(pb.raf);
       pb.raf = null;
+      // Dämpfung fallen lassen: im Pausenzustand steht der Zeiger exakt auf dem
+      // Wert des aktuellen Punkts.
+      pb.sogShown = null;
+      pb.frameSpanS = 0;
+      updateBoat();
       scheduleRefresh();
     }
   }
 
   function frame(ts) {
     if (!pb.playing) return;
+    let dtReal = null;
     if (pb.lastFrame != null) {
       // Deckeln, damit ein Tabwechsel keinen Riesensprung erzeugt.
-      const dt = Math.min((ts - pb.lastFrame) / 1000, 0.1);
-      pb.index += (pb.speed / SAMPLE_INTERVAL_S) * dt;
+      dtReal = Math.min((ts - pb.lastFrame) / 1000, 0.1);
+      pb.index += (pb.speed / SAMPLE_INTERVAL_S) * dtReal;
+      // Törnzeit, die in diesem Frame durchgelaufen ist – das ist die
+      // Untergrenze für ein sinnvolles Messfenster.
+      pb.frameSpanS = pb.speed * dtReal;
       if (pb.index >= pb.n - 1) {
         pb.index = pb.n - 1;
-        updateBoat();
+        updateBoat(dtReal);
         setPlaying(false);
         return;
       }
     }
     pb.lastFrame = ts;
-    updateBoat();
+    updateBoat(dtReal);
     pb.raf = requestAnimationFrame(frame);
   }
 
@@ -990,6 +1109,7 @@
   el.slider.addEventListener('input', () => {
     pb.index = Number(el.slider.value);
     pb.lastFrame = null;
+    pb.sogShown = null;     // beim Ziehen exakter Wert, nicht nachgezogen
     updateBoat();
   });
   el.speed.addEventListener('change', () => { pb.speed = Number(el.speed.value); });
