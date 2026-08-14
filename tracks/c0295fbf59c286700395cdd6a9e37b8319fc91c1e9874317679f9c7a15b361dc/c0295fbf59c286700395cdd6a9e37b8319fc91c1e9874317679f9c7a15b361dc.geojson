@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "type": "TrackManifest",
+  "properties": {
+    "id": "E5YAWBX5T5H7",
+    "name": "gjggfffdhhfg",
+    "boat": "–",
+    "skipper": "Skipper-OT9Px3",
+    "trip_start": null,
+    "trip_end": null,
+    "status": "active",
+    "created_at": "2026-08-14T10:03:27.867057Z",
+    "stats": {
+      "distance_total_nm": 0.0,
+      "point_count": 0,
+      "segment_count": 0
+    }
+  },
+  "segments": []
+}
